@@ -1,6 +1,6 @@
 const DIVISOR = "\r\n";
 
-export function restArrayToRestResponse(buffer: Buffer): string {
+export function restArrayToRestResponse(buffer: NonSharedBuffer): string {
   const respArrayText = buffer.toString("utf8");
   console.log("respArrayText", respArrayText);
   const propperRestArray = respArrayText.substring(1).split(DIVISOR);

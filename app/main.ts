@@ -9,7 +9,6 @@ const PING_COMMAND = "PING";
 const server: net.Server = net.createServer((connection: net.Socket) => {
   //   // Handle connection
   connection.on("data", (command) => {
-    console.log("(command)", command);
     const respReponse = restArrayToRestResponse(command);
     connection.write(respReponse);
   });
