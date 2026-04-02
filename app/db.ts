@@ -1,20 +1,21 @@
 import { randomUUIDv7 } from "bun";
 
+type Key = string;
+
 interface RedisDBArguments {
   id: string;
-  value: string;
+  value: string | string[];
   type?: string;
   timestampAdded: number;
   expiresInMs: number;
 }
-type RedisDB = Record<string, RedisDBArguments>;
+type RedisDB = Record<Key, RedisDBArguments>;
 
 const db: RedisDB = {};
 
 export function setKeyValue(textArray: string[]): boolean {
   const numberOfArgs = textArray.length;
-  const key = textArray[0];
-  const value = textArray[1];
+  const [key, value] = textArray;
   if (numberOfArgs == 2) {
     setSimpleKeyValue(key, value);
     return true;
@@ -52,7 +53,7 @@ function setKeyValueWithPx(key: string, value: string, timeMs: number) {
   };
 }
 
-export function getKeyValue(textArray: string[]): string | null {
+export function getKeyValue(textArray: string[]): string | null | string[] {
   const key = textArray[0];
   const isKeyExpired = isKeyValueExpired(key);
   if (!db[key] || isKeyExpired) return null;
@@ -62,6 +63,7 @@ export function getKeyValue(textArray: string[]): string | null {
 
 function isKeyValueExpired(key: string) {
   const response = db[key];
+  if (!response) return true;
   const checkTime = Date.now();
   const { expiresInMs, timestampAdded } = response;
   if (expiresInMs == Infinity) return false;
@@ -71,4 +73,25 @@ function isKeyValueExpired(key: string) {
     delete db[key];
     return true;
   }
+}
+
+export function addKeyListValue(textArray: string[]): number | null {
+  const [key, value] = textArray;
+  console.log("textArray;", textArray);
+
+  if (!key || !value) {
+    throw new Error("RPUSH command should have a key and a value");
+  }
+  const isKeyExpired = isKeyValueExpired(key);
+
+  if (!db[key] || isKeyExpired) {
+    setSimpleKeyValue(key, value);
+    return 1;
+  }
+  let dbValue = db[key].value;
+  if (!Array.isArray(dbValue)) {
+    dbValue = [dbValue];
+  }
+
+  return dbValue.length;
 }

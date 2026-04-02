@@ -1,4 +1,4 @@
-import { getKeyValue, setKeyValue } from "./db";
+import { addKeyListValue, getKeyValue, setKeyValue } from "./db";
 
 const DIVISOR = "\r\n";
 
@@ -32,12 +32,25 @@ export function restArrayToRestResponse(buffer: NonSharedBuffer): string {
       respResponse = stringToSimpleResp("OK");
       break;
     case "get":
-      const retrievedValue = getKeyValue(textArray);
+      let retrievedValue = getKeyValue(textArray);
       if (!retrievedValue) {
         respResponse = getNullBulkString();
         break;
       }
-      respResponse = arrayToRestBulkString([retrievedValue]);
+      if (!Array.isArray(retrievedValue)) {
+        retrievedValue = [retrievedValue];
+      }
+      respResponse = arrayToRestBulkString(retrievedValue);
+      break;
+    case "rpush":
+      const newListLength = addKeyListValue(textArray);
+      console.log("newListLength", newListLength);
+      if (!newListLength) {
+        respResponse = getNullBulkString();
+        break;
+      }
+      respResponse = integerToResp(newListLength);
+      console.log("respResponse", respResponse);
       break;
   }
   return respResponse;
@@ -61,4 +74,13 @@ function stringToSimpleResp(word: string) {
 
 function getNullBulkString() {
   return `$-1${DIVISOR}`;
+}
+
+function integerToResp(integer: number) {
+  const int32Val = integer | 0;
+  if (int32Val == 0 || !Number.isInteger(int32Val))
+    throw new Error("Value should be Int32");
+  const signal = integer > 0 ? "+" : "-";
+  const respInteger = `:${signal}${integer}${DIVISOR}`;
+  return respInteger;
 }
