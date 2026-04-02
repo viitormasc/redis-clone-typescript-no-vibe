@@ -1,3 +1,5 @@
+import { getKeyValue, setKeyValue } from "./db";
+
 const DIVISOR = "\r\n";
 
 export function restArrayToRestResponse(buffer: NonSharedBuffer): string {
@@ -8,6 +10,8 @@ export function restArrayToRestResponse(buffer: NonSharedBuffer): string {
   const messageArray = propperRestArray.filter(
     (value, index) => index % 2 !== 0,
   );
+
+  console.log("messageArray", messageArray);
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
   let response: string[] = [];
@@ -18,14 +22,26 @@ export function restArrayToRestResponse(buffer: NonSharedBuffer): string {
       respResponse = arrayToRestBulkString(response);
       break;
     case "ping":
-      respResponse = runPingCommand();
+      respResponse = stringToSimpleResp("PONG");
+      break;
+    case "set":
+      const valueWasSet = setKeyValue(textArray);
+      if (!valueWasSet) {
+        throw new Error("Value was not set");
+      }
+      respResponse = stringToSimpleResp("OK");
+      break;
+    case "get":
+      const retrievedValue = getKeyValue(textArray);
+      if (!retrievedValue) {
+        respResponse = getNullBulkString();
+        break;
+      }
+      respResponse = arrayToRestBulkString([retrievedValue]);
       break;
   }
-
   return respResponse;
 }
-
-const respArrayTest = "*3\r\n$4\r\nEcHo\r\n$5\r\nhello\r\n$5\r\nworld\r\n";
 
 function runEchoCommand(textArray: string[]) {
   return textArray;
@@ -39,6 +55,10 @@ function arrayToRestBulkString(textArray: string[]) {
   return response;
 }
 
-function runPingCommand() {
-  return "+PONG\r\n";
+function stringToSimpleResp(word: string) {
+  return `+${word}${DIVISOR}`;
+}
+
+function getNullBulkString() {
+  return `$-1${DIVISOR}`;
 }
