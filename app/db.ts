@@ -116,7 +116,7 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
     return listResponse;
   }
   stop = stop > valuesLength ? valuesLength : stop;
-  listResponse = dbValue.slice(start, stop)!!;
+  listResponse = dbValue.slice(start, stop + 1)!!;
   if (!Array.isArray(listResponse)) listResponse = [listResponse];
   return listResponse;
 }
