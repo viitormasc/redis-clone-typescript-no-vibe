@@ -99,7 +99,7 @@ function arrayToRespArray(array: string[]): string {
   if (arrayLength == 0) return "*0\r\n";
   let response = `*${arrayLength}${DIVISOR}`;
   array.forEach((value, index, array) => {
-    response.concat(`$${value.length}${DIVISOR}${value}${DIVISOR}`);
+    response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
   });
   return response;
 }
