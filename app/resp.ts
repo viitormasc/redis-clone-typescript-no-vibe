@@ -59,6 +59,7 @@ export function restArrayToRestResponse(
       break;
     case "lrange":
       const listValues = getKeyListRangeValues(textArray);
+      console.log("listValues", listValues);
       respResponse = arrayToRespArray(listValues);
       break;
   }

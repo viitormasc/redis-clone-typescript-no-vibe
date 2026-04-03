@@ -113,6 +113,7 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
 
   if (conditional) {
     listResponse = [];
+    console.log("listResponse", listResponse);
     return listResponse;
   }
   stop = stop > valuesLength ? valuesLength : stop;
