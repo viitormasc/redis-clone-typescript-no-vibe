@@ -76,21 +76,22 @@ function isKeyValueExpired(key: string) {
 }
 
 export function addKeyListValue(textArray: string[]): number | null {
-  const [key, value] = textArray;
-  if (!key || !value) {
-    throw new Error("RPUSH command should have a key and a value");
+  let [key, ...values] = textArray;
+  if (!key || !values) {
+    throw new Error("RPUSH command should have a key and a values");
   }
   const isKeyExpired = isKeyValueExpired(key);
 
   if (isKeyExpired) {
-    setSimpleKeyValue(key, value);
-    return 1;
+    const initialValue = values.shift()!!;
+    setSimpleKeyValue(key, initialValue);
+    if (values.length == 0) return 1;
   }
   let dbValue = db[key].value;
   if (!Array.isArray(dbValue)) {
     dbValue = [dbValue];
   }
-  dbValue.push(value);
+  dbValue.push(...values);
   db[key].value = dbValue;
   return dbValue.length;
 }
