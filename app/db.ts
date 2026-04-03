@@ -102,6 +102,7 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   const start = parseInt(textArray[1]);
   let stop = parseInt(textArray[2]);
   const dbValue = db[key].value;
+  console.log("dbValue", dbValue);
   const valuesLength = dbValue.length;
   let listResponse: string[] | string;
   const conditional =
@@ -111,6 +112,7 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
     Number.isNaN(start) ||
     Number.isNaN(stop);
 
+  console.log("conditional", conditional);
   if (conditional) {
     listResponse = [];
     console.log("listResponse", listResponse);
