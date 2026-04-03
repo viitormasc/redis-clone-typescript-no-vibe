@@ -1,4 +1,5 @@
 import { randomUUIDv7 } from "bun";
+import { number } from "zod";
 
 type Key = string;
 
@@ -94,4 +95,28 @@ export function addKeyListValue(textArray: string[]): number | null {
   dbValue.push(...values);
   db[key].value = dbValue;
   return dbValue.length;
+}
+
+export function getKeyListRangeValues(textArray: string[]): string[] {
+  let key = textArray[0];
+  const start = parseInt(textArray[1]);
+  let stop = parseInt(textArray[2]);
+  const dbValue = db[key].value;
+  const valuesLength = dbValue.length;
+  let listResponse: string[] | string;
+  const conditional =
+    !dbValue ||
+    start >= valuesLength ||
+    start > stop ||
+    Number.isNaN(start) ||
+    Number.isNaN(stop);
+
+  if (conditional) {
+    listResponse = [];
+    return listResponse;
+  }
+  stop = stop > valuesLength ? valuesLength : stop;
+  listResponse = dbValue.slice(start, stop)!!;
+  if (!Array.isArray(listResponse)) listResponse = [listResponse];
+  return listResponse;
 }

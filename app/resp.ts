@@ -1,4 +1,9 @@
-import { addKeyListValue, getKeyValue, setKeyValue } from "./db";
+import {
+  addKeyListValue,
+  getKeyListRangeValues,
+  getKeyValue,
+  setKeyValue,
+} from "./db";
 
 const DIVISOR = "\r\n";
 
@@ -46,13 +51,15 @@ export function restArrayToRestResponse(
       break;
     case "rpush":
       const newListLength = addKeyListValue(textArray);
-      console.log("newListLength", newListLength);
       if (!newListLength) {
         respResponse = getNullBulkString();
         break;
       }
       respResponse = integerToResp(newListLength);
-      console.log("respResponse", respResponse);
+      break;
+    case "lrange":
+      const listValues = getKeyListRangeValues(textArray);
+      respResponse = arrayToRespArray(listValues);
       break;
   }
   return respResponse;
@@ -85,4 +92,14 @@ function integerToResp(integer: number) {
   const signal = integer > 0 ? "+" : "-";
   const respInteger = `:${signal}${integer}${DIVISOR}`;
   return respInteger;
+}
+
+function arrayToRespArray(array: string[]): string {
+  const arrayLength = array.length;
+  if (arrayLength == 0) return "*0\r\n";
+  let response = `*${arrayLength}${DIVISOR}`;
+  array.forEach((value, index, array) => {
+    response.concat(`$${value.length}${DIVISOR}${value}${DIVISOR}`);
+  });
+  return response;
 }
