@@ -101,6 +101,8 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   let key = textArray[0];
   const start = parseInt(textArray[1]);
   let stop = parseInt(textArray[2]);
+  const keyExist = db[key];
+  if (!keyExist) return [];
   const dbValue = db[key].value;
   console.log("dbValue", dbValue);
   const valuesLength = dbValue.length;
@@ -114,9 +116,7 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
 
   console.log("conditional", conditional);
   if (conditional) {
-    listResponse = [];
-    console.log("listResponse", listResponse);
-    return listResponse;
+    return [];
   }
   stop = stop > valuesLength ? valuesLength : stop;
   listResponse = dbValue.slice(start, stop + 1)!!;
