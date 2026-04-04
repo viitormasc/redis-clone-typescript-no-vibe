@@ -2,6 +2,7 @@ import {
   addKeyListValue,
   getKeyListRangeValues,
   getKeyValue,
+  getListLength,
   pushListValues,
   setKeyValue,
 } from "./db";
@@ -69,7 +70,7 @@ export function restArrayToRestResponse(
       break;
     case "llen":
       const listLength = getListLength(textArray);
-      respResponse = integerToResp(newValuesLength);
+      respResponse = integerToResp(listLength);
       break;
   }
   return respResponse;
