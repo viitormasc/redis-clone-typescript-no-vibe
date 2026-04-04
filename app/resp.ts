@@ -98,10 +98,8 @@ function getNullBulkString() {
 
 function integerToResp(integer: number) {
   const int32Val = integer | 0;
-  if (int32Val == 0 || !Number.isInteger(int32Val))
-    throw new Error("Value should be Int32");
-  const signal = integer > 0 ? "+" : "-";
-  const respInteger = `:${signal}${integer}${DIVISOR}`;
+  if (!Number.isInteger(int32Val)) throw new Error("Value should be Int32");
+  const respInteger = `:${integer}${DIVISOR}`;
   return respInteger;
 }
 

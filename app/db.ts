@@ -157,7 +157,10 @@ export function pushListValues(textArray: string[]): number {
 
 export function getListLength(textArray: string[]): number {
   const key = textArray[0];
-  if (!db[key]) return 0;
+  console.log("key", key);
+  const isKeyExpired = isKeyValueExpired(key);
+  console.log("isKeyExpired", isKeyExpired);
+  if (isKeyExpired) return 0;
 
   return db[key].value.length;
 }
