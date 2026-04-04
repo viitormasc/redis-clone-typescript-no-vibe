@@ -67,6 +67,10 @@ export function restArrayToRestResponse(
       const newValuesLength = pushListValues(textArray);
       respResponse = integerToResp(newValuesLength);
       break;
+    case "llen":
+      const listLength = getListLength(textArray);
+      respResponse = integerToResp(newValuesLength);
+      break;
   }
   return respResponse;
 }
