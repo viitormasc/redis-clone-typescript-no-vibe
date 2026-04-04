@@ -99,26 +99,35 @@ export function addKeyListValue(textArray: string[]): number | null {
 
 export function getKeyListRangeValues(textArray: string[]): string[] {
   let key = textArray[0];
-  const start = parseInt(textArray[1]);
+  let start = parseInt(textArray[1]);
   let stop = parseInt(textArray[2]);
   const keyExist = db[key];
   if (!keyExist) return [];
   const dbValue = db[key].value;
-  console.log("dbValue", dbValue);
   const valuesLength = dbValue.length;
   let listResponse: string[] | string;
-  const conditional =
+  let conditional =
     !dbValue ||
     start >= valuesLength ||
     start > stop ||
     Number.isNaN(start) ||
     Number.isNaN(stop);
 
-  console.log("conditional", conditional);
+  if (start < 0 || stop < 0) {
+    conditional = conditional && stop > start;
+  }
+
   if (conditional) {
     return [];
   }
-  stop = stop > valuesLength ? valuesLength : stop;
+  if (start < 0) {
+    start = -start > valuesLength ? 0 : valuesLength + start;
+  }
+  if (stop < 0) {
+    stop = valuesLength + stop;
+  } else {
+    stop = stop > valuesLength ? valuesLength : stop;
+  }
   listResponse = dbValue.slice(start, stop + 1)!!;
   if (!Array.isArray(listResponse)) listResponse = [listResponse];
   return listResponse;
