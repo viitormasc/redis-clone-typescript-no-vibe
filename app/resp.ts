@@ -5,6 +5,8 @@ import {
   getKeyValue,
   getListLength,
   pushListValues,
+  removeAndReturnValues,
+  removeArrayValues,
   setKeyValue,
 } from "./db";
 
@@ -74,12 +76,18 @@ export function restArrayToRestResponse(
       respResponse = integerToResp(listLength);
       break;
     case "lpop":
-      const firstValue = [getFirstValue(textArray)];
-      if (!firstValue) {
+      const removedArrayValues = removeArrayValues(textArray);
+      const initialResponseTypeIsArray = Array.isArray(removedArrayValues)
+        ? true
+        : false;
+      if (!removedArrayValues) {
         respResponse = getNullBulkString();
         break;
       }
-      respResponse = arrayToRestBulkString(firstValue);
+      respResponse = initialResponseTypeIsArray
+        ? arrayToRespArray(removedArrayValues as string[])
+        : arrayToRestBulkString([removedArrayValues as string]);
+      console.log("respResponse", respResponse);
       break;
   }
   return respResponse;

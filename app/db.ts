@@ -163,15 +163,18 @@ export function getListLength(textArray: string[]): number {
   return db[key].value.length;
 }
 
-export function getFirstValue(textArray: string[]): string {
+export function removeArrayValues(textArray: string[]): string | string[] {
   const key = textArray[0];
   const isKeyExpired = isKeyValueExpired(key);
+  const numberOfValues = Number.parseInt(textArray[1]);
+  if (isKeyExpired || Number.isNaN(numberOfValues)) return "";
+  if (!numberOfValues || typeof db[key].value == "string") {
+    const firstValue =
+      typeof db[key].value == "string" ? db[key].value : db[key].value.shift();
 
-  if (isKeyExpired) return "";
-  const firstValue =
-    typeof db[key].value == "string" ? db[key].value : db[key].value.shift();
-
-  return firstValue || "";
+    return firstValue || "";
+  }
+  return db[key].value.splice(0, numberOfValues);
 }
 
 function dbValueToArray(key: string): string[] {
