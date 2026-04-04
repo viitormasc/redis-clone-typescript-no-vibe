@@ -101,8 +101,8 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   let key = textArray[0];
   let start = parseInt(textArray[1]);
   let stop = parseInt(textArray[2]);
-  const keyExist = db[key];
-  if (!keyExist) return [];
+  const isKeyExpired = db[key];
+  if (!isKeyExpired) return [];
   const dbValue = db[key].value;
   const valuesLength = dbValue.length;
   let listResponse: string[] | string;
@@ -136,17 +136,18 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
 export function pushListValues(textArray: string[]): number {
   const key = textArray[0];
   console.log("key", key);
-  const values = textArray.slice(1).reverse();
+  const values = textArray.slice(1);
   console.log("values", values);
   if (!key || !values) return 0;
-  const keyExist = isKeyValueExpired(key);
-  console.log("keyExist", keyExist);
-  if (!keyExist) {
+  const isKeyExpired = isKeyValueExpired(key);
+  console.log("isKeyExpired", isKeyExpired);
+  if (isKeyExpired) {
     const firstValue = values.shift();
     console.log("firstValue", firstValue);
     setSimpleKeyValue(key, firstValue!!);
     if (values.length == 0) return 1;
   }
+  console.log("value", db[key]);
   const dbValue = !Array.isArray(db[key].value)
     ? [db[key].value]
     : db[key].value;
