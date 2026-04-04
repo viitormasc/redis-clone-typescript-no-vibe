@@ -167,12 +167,16 @@ export function removeArrayValues(textArray: string[]): string | string[] {
   const key = textArray[0];
   const isKeyExpired = isKeyValueExpired(key);
   const numberOfValues = Number.parseInt(textArray[1]);
-  if (isKeyExpired || Number.isNaN(numberOfValues)) return "";
+  if (isKeyExpired) return "";
   if (!numberOfValues || typeof db[key].value == "string") {
     const firstValue =
       typeof db[key].value == "string" ? db[key].value : db[key].value.shift();
 
     return firstValue || "";
+  } else if (Number.isNaN(numberOfValues) && Array.isArray(db[key].value)) {
+    const namedValue = textArray[1];
+    db[key].value = db[key].value.filter((value) => value !== namedValue);
+    return namedValue;
   }
   return db[key].value.splice(0, numberOfValues);
 }
