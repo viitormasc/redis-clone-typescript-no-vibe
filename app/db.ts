@@ -143,9 +143,7 @@ export function pushListValues(textArray: string[]): number {
     setSimpleKeyValue(key, firstValue!!);
     if (values.length == 0) return 1;
   }
-  const dbValue = !Array.isArray(db[key].value)
-    ? [db[key].value]
-    : db[key].value;
+  const dbValue = dbValueToArray(key);
 
   values.forEach((value) => {
     dbValue.unshift(value);
@@ -170,6 +168,16 @@ export function getFirstValue(textArray: string[]): string {
   const isKeyExpired = isKeyValueExpired(key);
 
   if (isKeyExpired) return "";
+  const firstValue =
+    typeof db[key].value == "string" ? db[key].value : db[key].value.shift();
 
-  return db[key].value[0];
+  return firstValue || "";
+}
+
+function dbValueToArray(key: string): string[] {
+  const dbValue = !Array.isArray(db[key].value)
+    ? [db[key].value]
+    : db[key].value;
+
+  return dbValue;
 }
