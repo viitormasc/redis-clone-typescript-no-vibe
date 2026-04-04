@@ -132,3 +132,33 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   if (!Array.isArray(listResponse)) listResponse = [listResponse];
   return listResponse;
 }
+
+export function pushListValues(textArray: string[]): number {
+  const key = textArray[0];
+  console.log("key", key);
+  const values = textArray.slice(1).reverse();
+  console.log("values", values);
+  if (!key || !values) return 0;
+  const keyExist = isKeyValueExpired(key);
+  console.log("keyExist", keyExist);
+  if (!keyExist) {
+    const firstValue = values.shift();
+    console.log("firstValue", firstValue);
+    setSimpleKeyValue(key, firstValue!!);
+    if (values.length == 0) return 1;
+  }
+  const dbValue = !Array.isArray(db[key].value)
+    ? [db[key].value]
+    : db[key].value;
+
+  console.log("dbValue", dbValue);
+
+  console.log("valyes", values);
+  values.forEach((value) => {
+    dbValue.unshift(value);
+  });
+
+  console.log("dbValue;", dbValue);
+  db[key].value = dbValue;
+  return db[key].value.length;
+}

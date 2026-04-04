@@ -2,6 +2,7 @@ import {
   addKeyListValue,
   getKeyListRangeValues,
   getKeyValue,
+  pushListValues,
   setKeyValue,
 } from "./db";
 
@@ -61,6 +62,10 @@ export function restArrayToRestResponse(
       const listValues = getKeyListRangeValues(textArray);
       console.log("listValues", listValues);
       respResponse = arrayToRespArray(listValues);
+      break;
+    case "lpush":
+      const newValuesLength = pushListValues(textArray);
+      respResponse = integerToResp(newValuesLength);
       break;
   }
   return respResponse;
