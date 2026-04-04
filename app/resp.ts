@@ -1,5 +1,6 @@
 import {
   addKeyListValue,
+  getFirstValue,
   getKeyListRangeValues,
   getKeyValue,
   getListLength,
@@ -71,6 +72,14 @@ export function restArrayToRestResponse(
     case "llen":
       const listLength = getListLength(textArray);
       respResponse = integerToResp(listLength);
+      break;
+    case "lpop":
+      const firstValue = [getFirstValue(textArray)];
+      if (!firstValue) {
+        respResponse = getNullBulkString();
+        break;
+      }
+      respResponse = arrayToRestBulkString(firstValue);
       break;
   }
   return respResponse;

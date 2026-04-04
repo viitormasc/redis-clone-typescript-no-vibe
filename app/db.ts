@@ -164,3 +164,12 @@ export function getListLength(textArray: string[]): number {
 
   return db[key].value.length;
 }
+
+export function getFirstValue(textArray: string[]): string {
+  const key = textArray[0];
+  const isKeyExpired = isKeyValueExpired(key);
+
+  if (isKeyExpired) return "";
+
+  return db[key].value[0];
+}
