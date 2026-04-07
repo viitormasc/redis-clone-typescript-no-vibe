@@ -92,7 +92,7 @@ export async function restArrayToRestResponse(
     case "blpop":
       const blpopValue = await getBlockedPop(textArray)
       if(!blpopValue) {
-        respResponse = arrayToRespArray([])
+        respResponse = returnNullArray() 
         break
       }
       respResponse = arrayToRespArray([textArray[0],blpopValue]);
@@ -136,4 +136,8 @@ function arrayToRespArray(array: string[]): string {
     response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
   });
   return response;
+}
+
+function returnNullArray() {
+  return "*-1\r\n"
 }

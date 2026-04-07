@@ -192,7 +192,8 @@ function dbValueToArray(key: string): string[] {
 
 export async function getBlockedPop(textArray: string[]): Promise<string>{
   const key = textArray[0]
-  const timeoutInSec = parseInt(textArray[1])
+  const timeoutInSec = parseFloat(textArray[1])
+console.log("timeoutInSec", timeoutInSec)
 
   if (!key || Number.isNaN(timeoutInSec)) throw new Error("Blpop command must have list key and timeout in seconds")
   let poppedValue : string
@@ -205,20 +206,21 @@ return poppedValue
 }
 
 function popListValueAsync(key: string,  timeoutInSec : number){
-  const now = Date.now()
+  let now = Date.now()
   const timeoutInMs = timeoutInSec * 1000 || Infinity
   const timeLimit = now + timeoutInMs 
   return new Promise<string>((resolve, reject) => {
     setInterval(() => {
      const removedValue = popListValue(key) 
+      // now = now + 1
       if(Date.now() >= timeLimit) {
-        reject("")
+        resolve("")
       }
       if(removedValue && Date.now() <= timeLimit) {
         resolve(removedValue)
       }
       else if (removedValue && Date.now() > timeLimit){
-        reject("")
+        resolve("")
       }
     }, 1)
   })
