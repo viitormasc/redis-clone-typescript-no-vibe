@@ -56,8 +56,8 @@ function setKeyValueWithPx(key: string, value: string, timeMs: number) {
 
 export function getKeyValue(textArray: string[]): string | null | string[] {
   const key = textArray[0];
-  const isKeyExpired = isKeyValueExpired(key);
-  if (!db[key] || isKeyExpired) return null;
+  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  if (isKeyExpired) return null;
   const value = db[key].value;
   return value;
 }
@@ -81,7 +81,7 @@ export function addKeyListValue(textArray: string[]): number | null {
   if (!key || !values) {
     throw new Error("RPUSH command should have a key and a values");
   }
-  const isKeyExpired = isKeyValueExpired(key);
+  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
 
   if (isKeyExpired) {
     const initialValue = values.shift()!!;
@@ -101,8 +101,8 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   let key = textArray[0];
   let start = parseInt(textArray[1]);
   let stop = parseInt(textArray[2]);
-  const isKeyExpired = db[key];
-  if (!isKeyExpired) return [];
+  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  if (isKeyExpired) return [];
   const dbValue = db[key].value;
   const valuesLength = dbValue.length;
   let listResponse: string[] | string;
@@ -137,7 +137,7 @@ export function pushListValues(textArray: string[]): number {
   const key = textArray[0];
   const values = textArray.slice(1);
   if (!key || !values) return 0;
-  const isKeyExpired = isKeyValueExpired(key);
+  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
   if (isKeyExpired) {
     const firstValue = values.shift();
     setSimpleKeyValue(key, firstValue!!);
@@ -155,9 +155,7 @@ export function pushListValues(textArray: string[]): number {
 
 export function getListLength(textArray: string[]): number {
   const key = textArray[0];
-  console.log("key", key);
-  const isKeyExpired = isKeyValueExpired(key);
-  console.log("isKeyExpired", isKeyExpired);
+  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
   if (isKeyExpired) return 0;
 
   return db[key].value.length;
@@ -165,7 +163,7 @@ export function getListLength(textArray: string[]): number {
 
 export function removeArrayValues(textArray: string[]): string | string[] {
   const key = textArray[0];
-  const isKeyExpired = isKeyValueExpired(key);
+  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
   const numberOfValues = Number.parseInt(textArray[1]);
   if (isKeyExpired) return "";
   if (!numberOfValues || typeof db[key].value == "string") {
