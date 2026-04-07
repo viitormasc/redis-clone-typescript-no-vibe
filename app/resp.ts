@@ -1,5 +1,6 @@
 import {
   addKeyListValue,
+  getBlockedPop,
   getFirstValue,
   getKeyListRangeValues,
   getKeyValue,
@@ -12,9 +13,9 @@ import {
 
 const DIVISOR = "\r\n";
 
-export function restArrayToRestResponse(
+export async function restArrayToRestResponse(
   buffer: NonSharedBuffer | string,
-): string {
+): Promise<string> {
   const respArrayText = buffer.toString("utf8");
   console.log("respArrayText", respArrayText);
   const propperRestArray = respArrayText.substring(1).split(DIVISOR);
@@ -87,7 +88,14 @@ export function restArrayToRestResponse(
       respResponse = initialResponseTypeIsArray
         ? arrayToRespArray(removedArrayValues as string[])
         : arrayToRestBulkString([removedArrayValues as string]);
-      console.log("respResponse", respResponse);
+      break;
+    case "blpop":
+      const blpopValue = await getBlockedPop(textArray)
+      if(!blpopValue) {
+        respResponse = arrayToRespArray([])
+        break
+      }
+      respResponse = arrayToRespArray([textArray[0],blpopValue]);
       break;
   }
   return respResponse;

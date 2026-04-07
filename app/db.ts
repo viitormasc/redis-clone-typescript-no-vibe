@@ -5,7 +5,7 @@ type Key = string;
 
 interface RedisDBArguments {
   id: string;
-  value: string | string[];
+  value: string[];
   type?: string;
   timestampAdded: number;
   expiresInMs: number;
@@ -38,7 +38,7 @@ export function setKeyValue(textArray: string[]): boolean {
 function setSimpleKeyValue(key: string, value: string) {
   db[key] = {
     id: randomUUIDv7(),
-    value: value,
+    value: [value],
     timestampAdded: Date.now(),
     expiresInMs: Infinity,
   };
@@ -48,7 +48,7 @@ function setSimpleKeyValue(key: string, value: string) {
 function setKeyValueWithPx(key: string, value: string, timeMs: number) {
   db[key] = {
     id: randomUUIDv7(),
-    value: value,
+    value: [value],
     timestampAdded: Date.now(),
     expiresInMs: timeMs,
   };
@@ -187,4 +187,46 @@ function dbValueToArray(key: string): string[] {
     : db[key].value;
 
   return dbValue;
+}
+
+
+export async function getBlockedPop(textArray: string[]): Promise<string>{
+  const key = textArray[0]
+  const timeoutInSec = parseInt(textArray[1])
+
+  if (!key || Number.isNaN(timeoutInSec)) throw new Error("Blpop command must have list key and timeout in seconds")
+  let poppedValue : string
+  if(!db[key]) {
+    poppedValue  = await popListValueAsync(key, timeoutInSec)
+    return poppedValue 
+  }
+  poppedValue = popListValue(key) as string
+return poppedValue
+}
+
+function popListValueAsync(key: string,  timeoutInSec : number){
+  const now = Date.now()
+  const timeoutInMs = timeoutInSec * 1000 || Infinity
+  const timeLimit = now + timeoutInMs 
+  return new Promise<string>((resolve, reject) => {
+    setInterval(() => {
+     const removedValue = popListValue(key) 
+      if(Date.now() >= timeLimit) {
+        reject("")
+      }
+      if(removedValue && Date.now() <= timeLimit) {
+        resolve(removedValue)
+      }
+      else if (removedValue && Date.now() > timeLimit){
+        reject("")
+      }
+    }, 1)
+  })
+}
+
+
+function popListValue(key: string) {
+  const keyExists = db[key]
+  if (!keyExists) return ""
+    return db[key].value.shift()
 }
