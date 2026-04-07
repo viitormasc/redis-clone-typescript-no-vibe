@@ -5,6 +5,7 @@ import {
   getKeyListRangeValues,
   getKeyValue,
   getListLength,
+  getValueType,
   pushListValues,
   removeAndReturnValues,
   removeArrayValues,
@@ -96,6 +97,10 @@ export async function restArrayToRestResponse(
         break
       }
       respResponse = arrayToRespArray([textArray[0],blpopValue]);
+      break;
+    case "type":
+      const valueType = getValueType(textArray)
+      respResponse = stringToSimpleResp(valueType);
       break;
   }
   return respResponse;

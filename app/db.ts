@@ -232,3 +232,13 @@ function popListValue(key: string) {
   if (!keyExists) return ""
     return db[key].value.shift()
 }
+
+export function getValueType(textArray:string[]) : string {
+  const key = textArray[0]
+  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  if (isKeyExpired) return "none"
+  const dbValue = db[key].value 
+  if(dbValue.length == 1) return "string"
+
+return "none"
+}
