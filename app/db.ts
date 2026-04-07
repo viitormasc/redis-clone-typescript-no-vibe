@@ -1,18 +1,21 @@
 import { randomUUIDv7 } from "bun";
-import { number } from "zod";
 
 type Key = string;
 
-interface RedisDBArguments {
+type RedisStreamDBArguments = Record<string, string>;
+
+interface RedisValuesDBArguments {
   id: string;
   value: string[];
   type?: string;
   timestampAdded: number;
   expiresInMs: number;
 }
-type RedisDB = Record<Key, RedisDBArguments>;
+type RedisValuesDB = Record<Key, RedisValuesDBArguments>;
+type RedisStreamDB = Record<Key, RedisStreamDBArguments[]>;
 
-const db: RedisDB = {};
+const valuesDB: RedisValuesDB = {};
+const streamDB: RedisStreamDB = {};
 
 export function setKeyValue(textArray: string[]): boolean {
   const numberOfArgs = textArray.length;
@@ -36,7 +39,7 @@ export function setKeyValue(textArray: string[]): boolean {
 }
 
 function setSimpleKeyValue(key: string, value: string) {
-  db[key] = {
+  valuesDB[key] = {
     id: randomUUIDv7(),
     value: [value],
     timestampAdded: Date.now(),
@@ -46,7 +49,7 @@ function setSimpleKeyValue(key: string, value: string) {
 }
 
 function setKeyValueWithPx(key: string, value: string, timeMs: number) {
-  db[key] = {
+  valuesDB[key] = {
     id: randomUUIDv7(),
     value: [value],
     timestampAdded: Date.now(),
@@ -56,14 +59,14 @@ function setKeyValueWithPx(key: string, value: string, timeMs: number) {
 
 export function getKeyValue(textArray: string[]): string | null | string[] {
   const key = textArray[0];
-  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   if (isKeyExpired) return null;
-  const value = db[key].value;
+  const value = valuesDB[key].value;
   return value;
 }
 
 function isKeyValueExpired(key: string) {
-  const response = db[key];
+  const response = valuesDB[key];
   if (!response) return true;
   const checkTime = Date.now();
   const { expiresInMs, timestampAdded } = response;
@@ -71,7 +74,7 @@ function isKeyValueExpired(key: string) {
   const expireTime = expiresInMs + timestampAdded;
 
   if (checkTime >= expireTime) {
-    delete db[key];
+    delete valuesDB[key];
     return true;
   }
 }
@@ -81,19 +84,19 @@ export function addKeyListValue(textArray: string[]): number | null {
   if (!key || !values) {
     throw new Error("RPUSH command should have a key and a values");
   }
-  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
 
   if (isKeyExpired) {
     const initialValue = values.shift()!!;
     setSimpleKeyValue(key, initialValue);
     if (values.length == 0) return 1;
   }
-  let dbValue = db[key].value;
+  let dbValue = valuesDB[key].value;
   if (!Array.isArray(dbValue)) {
     dbValue = [dbValue];
   }
   dbValue.push(...values);
-  db[key].value = dbValue;
+  valuesDB[key].value = dbValue;
   return dbValue.length;
 }
 
@@ -101,9 +104,9 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   let key = textArray[0];
   let start = parseInt(textArray[1]);
   let stop = parseInt(textArray[2]);
-  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   if (isKeyExpired) return [];
-  const dbValue = db[key].value;
+  const dbValue = valuesDB[key].value;
   const valuesLength = dbValue.length;
   let listResponse: string[] | string;
   let conditional =
@@ -137,7 +140,7 @@ export function pushListValues(textArray: string[]): number {
   const key = textArray[0];
   const values = textArray.slice(1);
   if (!key || !values) return 0;
-  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   if (isKeyExpired) {
     const firstValue = values.shift();
     setSimpleKeyValue(key, firstValue!!);
@@ -149,94 +152,150 @@ export function pushListValues(textArray: string[]): number {
     dbValue.unshift(value);
   });
 
-  db[key].value = dbValue;
-  return db[key].value.length;
+  valuesDB[key].value = dbValue;
+  return valuesDB[key].value.length;
 }
 
 export function getListLength(textArray: string[]): number {
   const key = textArray[0];
-  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   if (isKeyExpired) return 0;
 
-  return db[key].value.length;
+  return valuesDB[key].value.length;
 }
 
 export function removeArrayValues(textArray: string[]): string | string[] {
   const key = textArray[0];
-  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
+  const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   const numberOfValues = Number.parseInt(textArray[1]);
   if (isKeyExpired) return "";
-  if (!numberOfValues || typeof db[key].value == "string") {
+  if (!numberOfValues || typeof valuesDB[key].value == "string") {
     const firstValue =
-      typeof db[key].value == "string" ? db[key].value : db[key].value.shift();
+      typeof valuesDB[key].value == "string"
+        ? valuesDB[key].value
+        : valuesDB[key].value.shift();
 
     return firstValue || "";
-  } else if (Number.isNaN(numberOfValues) && Array.isArray(db[key].value)) {
+  } else if (
+    Number.isNaN(numberOfValues) &&
+    Array.isArray(valuesDB[key].value)
+  ) {
     const namedValue = textArray[1];
-    db[key].value = db[key].value.filter((value) => value !== namedValue);
+    valuesDB[key].value = valuesDB[key].value.filter(
+      (value) => value !== namedValue,
+    );
     return namedValue;
   }
-  return db[key].value.splice(0, numberOfValues);
+  return valuesDB[key].value.splice(0, numberOfValues);
 }
 
 function dbValueToArray(key: string): string[] {
-  const dbValue = !Array.isArray(db[key].value)
-    ? [db[key].value]
-    : db[key].value;
+  const dbValue = !Array.isArray(valuesDB[key].value)
+    ? [valuesDB[key].value]
+    : valuesDB[key].value;
 
   return dbValue;
 }
 
+export async function getBlockedPop(textArray: string[]): Promise<string> {
+  const key = textArray[0];
+  const timeoutInSec = parseFloat(textArray[1]);
+  console.log("timeoutInSec", timeoutInSec);
 
-export async function getBlockedPop(textArray: string[]): Promise<string>{
-  const key = textArray[0]
-  const timeoutInSec = parseFloat(textArray[1])
-console.log("timeoutInSec", timeoutInSec)
-
-  if (!key || Number.isNaN(timeoutInSec)) throw new Error("Blpop command must have list key and timeout in seconds")
-  let poppedValue : string
-  if(!db[key]) {
-    poppedValue  = await popListValueAsync(key, timeoutInSec)
-    return poppedValue 
+  if (!key || Number.isNaN(timeoutInSec))
+    throw new Error("Blpop command must have list key and timeout in seconds");
+  let poppedValue: string;
+  if (!valuesDB[key]) {
+    poppedValue = await popListValueAsync(key, timeoutInSec);
+    return poppedValue;
   }
-  poppedValue = popListValue(key) as string
-return poppedValue
+  poppedValue = popListValue(key) as string;
+  return poppedValue;
 }
 
-function popListValueAsync(key: string,  timeoutInSec : number){
-  let now = Date.now()
-  const timeoutInMs = timeoutInSec * 1000 || Infinity
-  const timeLimit = now + timeoutInMs 
+function popListValueAsync(key: string, timeoutInSec: number) {
+  let now = Date.now();
+  const timeoutInMs = timeoutInSec * 1000 || Infinity;
+  const timeLimit = now + timeoutInMs;
   return new Promise<string>((resolve, reject) => {
     setInterval(() => {
-     const removedValue = popListValue(key) 
+      const removedValue = popListValue(key);
       // now = now + 1
-      if(Date.now() >= timeLimit) {
-        resolve("")
+      if (Date.now() >= timeLimit) {
+        resolve("");
       }
-      if(removedValue && Date.now() <= timeLimit) {
-        resolve(removedValue)
+      if (removedValue && Date.now() <= timeLimit) {
+        resolve(removedValue);
+      } else if (removedValue && Date.now() > timeLimit) {
+        resolve("");
       }
-      else if (removedValue && Date.now() > timeLimit){
-        resolve("")
-      }
-    }, 1)
-  })
+    }, 1);
+  });
 }
-
 
 function popListValue(key: string) {
-  const keyExists = db[key]
-  if (!keyExists) return ""
-    return db[key].value.shift()
+  const keyExists = valuesDB[key];
+  if (!keyExists) return "";
+  return valuesDB[key].value.shift();
 }
 
-export function getValueType(textArray:string[]) : string {
-  const key = textArray[0]
-  const isKeyExpired = !db[key] || isKeyValueExpired(key) 
-  if (isKeyExpired) return "none"
-  const dbValue = db[key].value 
-  if(dbValue.length == 1) return "string"
+export function getValueType(textArray: string[]): string {
+  const key = textArray[0];
+  const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
+  const isStream = streamDB[key];
+  if (isKeyExpired && !isStream) {
+    return "none";
+  }
+  const isValueDB = isKeyExpired ? false : true;
+  if (isValueDB) {
+    const dbValue = valuesDB[key].value;
+    if (dbValue.length == 1) return "string";
+  } else {
+    const dbStream = streamDB[key];
+    if (!dbStream) return "none";
+    return "stream";
+  }
 
-return "none"
+  return "none";
+}
+
+function createStream(
+  streamKey: string,
+  id: string,
+  objectValues: RedisStreamDBArguments,
+) {
+  streamDB[streamKey] = [
+    {
+      id: id,
+      ...objectValues,
+    },
+  ];
+  return id;
+}
+
+function keyValuesArrayToObject(keyValuesArray: string[]) {
+  const object: RedisStreamDBArguments = {};
+  keyValuesArray.forEach((value, index, array) => {
+    if (index % 2 == 0) {
+      object[value] = array[index + 1];
+    }
+  });
+  return object;
+}
+
+export function addStreamValues(textArray: string[]) {
+  const streamKey = textArray[0];
+  const id = textArray[1];
+  const keyValuesArray = textArray.slice(2);
+  const objectValues = keyValuesArrayToObject(keyValuesArray);
+  if (!streamDB[streamKey]) {
+    createStream(streamKey, id, objectValues);
+    return id;
+  }
+
+  streamDB[streamKey].push({
+    id: id,
+    ...objectValues,
+  });
+  return id;
 }

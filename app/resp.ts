@@ -1,5 +1,6 @@
 import {
   addKeyListValue,
+  addStreamValues,
   getBlockedPop,
   getFirstValue,
   getKeyListRangeValues,
@@ -91,16 +92,20 @@ export async function restArrayToRestResponse(
         : arrayToRestBulkString([removedArrayValues as string]);
       break;
     case "blpop":
-      const blpopValue = await getBlockedPop(textArray)
-      if(!blpopValue) {
-        respResponse = returnNullArray() 
-        break
+      const blpopValue = await getBlockedPop(textArray);
+      if (!blpopValue) {
+        respResponse = returnNullArray();
+        break;
       }
-      respResponse = arrayToRespArray([textArray[0],blpopValue]);
+      respResponse = arrayToRespArray([textArray[0], blpopValue]);
       break;
     case "type":
-      const valueType = getValueType(textArray)
+      const valueType = getValueType(textArray);
       respResponse = stringToSimpleResp(valueType);
+      break;
+    case "xadd":
+      const streamId = addStreamValues(textArray);
+      respResponse = stringToBulkString(streamId);
       break;
   }
   return respResponse;
@@ -108,6 +113,13 @@ export async function restArrayToRestResponse(
 
 function runEchoCommand(textArray: string[]) {
   return textArray;
+}
+
+function stringToBulkString(str: string) {
+  const length = str.length;
+  let bulkString = `$${length}${DIVISOR}`;
+  bulkString = bulkString + str + DIVISOR;
+  return bulkString;
 }
 
 function arrayToRestBulkString(textArray: string[]) {
@@ -144,5 +156,5 @@ function arrayToRespArray(array: string[]): string {
 }
 
 function returnNullArray() {
-  return "*-1\r\n"
+  return "*-1\r\n";
 }
