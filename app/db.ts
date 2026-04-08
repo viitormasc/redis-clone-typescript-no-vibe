@@ -2,7 +2,12 @@ import { randomUUIDv7 } from "bun";
 
 type Key = string;
 
-type RedisStreamDBArguments = Record<string, string>;
+type RedisStreamDBArguments = Omit<
+  {
+    id: string;
+  } & Record<string, string>,
+  "id"
+>;
 
 interface RedisValuesDBArguments {
   id: string;
@@ -286,6 +291,11 @@ function keyValuesArrayToObject(keyValuesArray: string[]) {
 export function addStreamValues(textArray: string[]) {
   const streamKey = textArray[0];
   const id = textArray[1];
+  if (id == "0-0")
+    return {
+      error: true,
+      message: "ERR The ID specified in XADD must be greater than 0-0",
+    };
   const keyValuesArray = textArray.slice(2);
   const objectValues = keyValuesArrayToObject(keyValuesArray);
   if (!streamDB[streamKey]) {
@@ -293,9 +303,39 @@ export function addStreamValues(textArray: string[]) {
     return id;
   }
 
+  const isValidId = validateStreamID(id, streamKey);
+  if (isValidId.error) return isValidId;
   streamDB[streamKey].push({
     id: id,
     ...objectValues,
   });
   return id;
+}
+
+function validateStreamID(id: string, streamKey: string) {
+  const [msTime, incremental] = id.split("-").map((value) => parseInt(value));
+  const lastStreamItem = streamDB[streamKey].slice(-1)[0];
+  const lastId = lastStreamItem.id;
+  const [lastIdMsTime, lastIdIncremental] = lastId
+    .split("-")
+    .map((value) => parseInt(value));
+
+  if (lastIdMsTime > msTime) {
+    return {
+      error: true,
+      message:
+        "ERR The ID specified in XADD is equal or smaller than the target stream top item",
+    };
+  }
+
+  if (lastIdMsTime == msTime) {
+    if (lastIdIncremental + 1 !== incremental)
+      return {
+        error: true,
+        message:
+          "ERR The ID specified in XADD is equal or smaller than the target stream top item",
+      };
+  }
+
+  return { error: false, message: "" };
 }

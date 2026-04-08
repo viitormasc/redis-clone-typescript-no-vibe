@@ -2,13 +2,11 @@ import {
   addKeyListValue,
   addStreamValues,
   getBlockedPop,
-  getFirstValue,
   getKeyListRangeValues,
   getKeyValue,
   getListLength,
   getValueType,
   pushListValues,
-  removeAndReturnValues,
   removeArrayValues,
   setKeyValue,
 } from "./db";
@@ -105,8 +103,13 @@ export async function restArrayToRestResponse(
       break;
     case "xadd":
       const streamId = addStreamValues(textArray);
-      respResponse = stringToBulkString(streamId);
-      break;
+      if (typeof streamId !== "string" && streamId.error) {
+        respResponse = simpleError(streamId.message);
+        break;
+      } else {
+        respResponse = stringToBulkString(streamId as string);
+        break;
+      }
   }
   return respResponse;
 }
@@ -157,4 +160,8 @@ function arrayToRespArray(array: string[]): string {
 
 function returnNullArray() {
   return "*-1\r\n";
+}
+
+function simpleError(message: string) {
+  return `-${message}${DIVISOR}`;
 }
