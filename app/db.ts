@@ -296,7 +296,9 @@ export function addStreamValues(textArray: string[]) {
       error: true,
       message: "ERR The ID specified in XADD must be greater than 0-0",
     };
-  if (id == "*") return;
+  if (id == "*") {
+    id = generateFullId(streamKey);
+  }
   let [msTime, incremental] = id.split("-").map((value) => parseInt(value));
   if (Number.isNaN(incremental)) {
     incremental = generateIncrementalId(streamKey, msTime);
@@ -348,7 +350,8 @@ function validateStreamID(id: string, streamKey: string) {
 
 function generateIncrementalId(streamKey: string, msTime: number) {
   const stream = streamDB[streamKey];
-  if (!stream) return 1;
+  if (!stream && msTime !== 0) return 0;
+  if (!stream && msTime == 0) return 1;
   const lastId = stream.slice(-1)[0].id;
   const [lastIdMsTime, lastIdIncremental] = lastId
     .split("-")
@@ -358,4 +361,12 @@ function generateIncrementalId(streamKey: string, msTime: number) {
     incremental = lastIdIncremental + 1;
   }
   return incremental;
+}
+
+function generateFullId(streamKey: string) {
+  let msTime: number;
+  let incremental: number;
+  msTime = Date.now();
+  incremental = generateIncrementalId(streamKey, msTime);
+  return msTime.toString() + "-" + incremental.toString();
 }
