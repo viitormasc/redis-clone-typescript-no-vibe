@@ -290,12 +290,18 @@ function keyValuesArrayToObject(keyValuesArray: string[]) {
 
 export function addStreamValues(textArray: string[]) {
   const streamKey = textArray[0];
-  const id = textArray[1];
+  let id = textArray[1];
   if (id == "0-0")
     return {
       error: true,
       message: "ERR The ID specified in XADD must be greater than 0-0",
     };
+  if (id == "*") return;
+  let [msTime, incremental] = id.split("-").map((value) => parseInt(value));
+  if (Number.isNaN(incremental)) {
+    incremental = generateIncrementalId(streamKey, msTime);
+    id = msTime.toString() + "-" + incremental.toString();
+  }
   const keyValuesArray = textArray.slice(2);
   const objectValues = keyValuesArrayToObject(keyValuesArray);
   if (!streamDB[streamKey]) {
@@ -338,4 +344,18 @@ function validateStreamID(id: string, streamKey: string) {
   }
 
   return { error: false, message: "" };
+}
+
+function generateIncrementalId(streamKey: string, msTime: number) {
+  const stream = streamDB[streamKey];
+  if (!stream) return 1;
+  const lastId = stream.slice(-1)[0].id;
+  const [lastIdMsTime, lastIdIncremental] = lastId
+    .split("-")
+    .map((value) => Number.parseInt(value));
+  let incremental = 0;
+  if (lastIdMsTime == msTime) {
+    incremental = lastIdIncremental + 1;
+  }
+  return incremental;
 }
