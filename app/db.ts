@@ -376,7 +376,7 @@ export function getStreamRange(
   textArray: string[],
 ): RedisStreamDBArguments[] | void {
   let [streamKey, initialId, finalId] = textArray;
-  let streamValues: RedisStreamDBArguments[] 
+  let streamValues: RedisStreamDBArguments[];
   if (!streamDB[streamKey]) {
     return;
   }
@@ -385,17 +385,21 @@ export function getStreamRange(
   if (finalId[-1] == "*") getAllValuesFromId = true;
 
   const allDbStreamValues = streamDB[streamKey];
-  const firstIndex = initialId =="-" ? 0 : allDbStreamValues.findIndex(
-    (value) => value.id == initialId,
-  );
-  const lastIndex = allDbStreamValues.findLastIndex((value) => {
-    if (getAllValuesFromId) {
-      return value.id.split("-")[0] == finalId.split("-")[0];
-    }
-    return value.id == finalId;
-  });
+  const firstIndex =
+    initialId == "-"
+      ? 0
+      : allDbStreamValues.findIndex((value) => value.id == initialId);
+  const lastIndex =
+    finalId[0] == "+"
+      ? streamDB[streamKey].length
+      : allDbStreamValues.findLastIndex((value) => {
+          if (getAllValuesFromId) {
+            return value.id.split("-")[0] == finalId.split("-")[0];
+          }
+          return value.id == finalId;
+        });
   streamValues = allDbStreamValues.slice(firstIndex, lastIndex + 1);
-  return streamValues 
+  return streamValues;
 }
 
 function processStreamIds(initialId: string, finalId: string): string[] {
@@ -407,6 +411,8 @@ function processStreamIds(initialId: string, finalId: string): string[] {
     finalIdIncremental = "*";
   }
   initialId = [initialIdMsTime, initialIdIncremental].join("-");
+  console.log("initialId", initialId);
   finalId = [finalIdMsTime, finalIdIncremental].join("-");
+  console.log("finalId", finalId);
   return [initialId, finalId];
 }
