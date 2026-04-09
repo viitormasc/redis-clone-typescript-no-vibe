@@ -1,8 +1,9 @@
 import { randomUUIDv7 } from "bun";
+import { process } from "zod/v4/core";
 
 type Key = string;
 
-type RedisStreamDBArguments = Omit<
+export type RedisStreamDBArguments = Omit<
   {
     id: string;
   } & Record<string, string>,
@@ -369,4 +370,43 @@ function generateFullId(streamKey: string) {
   msTime = Date.now();
   incremental = generateIncrementalId(streamKey, msTime);
   return msTime.toString() + "-" + incremental.toString();
+}
+
+export function getStreamRange(
+  textArray: string[],
+): RedisStreamDBArguments[] | void {
+  let [streamKey, initialId, finalId] = textArray;
+  let streamValues: RedisStreamDBArguments[] 
+  if (!streamDB[streamKey]) {
+    return;
+  }
+  [initialId, finalId] = processStreamIds(initialId, finalId);
+  let getAllValuesFromId = false;
+  if (finalId[-1] == "*") getAllValuesFromId = true;
+
+  const allDbStreamValues = streamDB[streamKey];
+  const firstIndex = allDbStreamValues.findIndex(
+    (value) => value.id == initialId,
+  );
+  const lastIndex = allDbStreamValues.findLastIndex((value) => {
+    if (getAllValuesFromId) {
+      return value.id.split("-")[0] == finalId.split("-")[0];
+    }
+    return value.id == finalId;
+  });
+  streamValues = allDbStreamValues.slice(firstIndex, lastIndex + 1);
+  return streamValues 
+}
+
+function processStreamIds(initialId: string, finalId: string): string[] {
+  let [initialIdMsTime, initialIdIncremental] = initialId.split("-");
+  let [finalIdMsTime, finalIdIncremental] = finalId.split("-");
+
+  if (initialIdIncremental == undefined) initialIdIncremental = "0";
+  if (finalIdIncremental == undefined) {
+    finalIdIncremental = "*";
+  }
+  initialId = [initialIdMsTime, initialIdIncremental].join("-");
+  finalId = [finalIdMsTime, finalIdIncremental].join("-");
+  return [initialId, finalId];
 }

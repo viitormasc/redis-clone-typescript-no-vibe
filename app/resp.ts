@@ -5,10 +5,12 @@ import {
   getKeyListRangeValues,
   getKeyValue,
   getListLength,
+  getStreamRange,
   getValueType,
   pushListValues,
   removeArrayValues,
   setKeyValue,
+  type RedisStreamDBArguments,
 } from "./db";
 
 const DIVISOR = "\r\n";
@@ -92,7 +94,7 @@ export async function restArrayToRestResponse(
     case "blpop":
       const blpopValue = await getBlockedPop(textArray);
       if (!blpopValue) {
-        respResponse = returnNullArray();
+        respResponse = getNullArray();
         break;
       }
       respResponse = arrayToRespArray([textArray[0], blpopValue]);
@@ -110,6 +112,14 @@ export async function restArrayToRestResponse(
         respResponse = stringToBulkString(streamId as string);
         break;
       }
+    case "xrange":
+      const arrayStream = getStreamRange(textArray);
+      if (!arrayStream) {
+        respResponse = getNullArray()
+        break
+      }
+      respResponse = streamArrayToRespArray(arrayStream);
+      break;
   }
   return respResponse;
 }
@@ -158,7 +168,27 @@ function arrayToRespArray(array: string[]): string {
   return response;
 }
 
-function returnNullArray() {
+function streamArrayToRespArray(streamArray: RedisStreamDBArguments[]): string {
+    let response = `*${streamArray.length}${DIVISOR}`;
+
+    streamArray.forEach((streamItem) => {
+      const { id, ...fields } = streamItem;
+      const fieldEntries = Object.entries(fields);
+
+      response += `*2${DIVISOR}`;
+      response += `$${id.length}${DIVISOR}${id}${DIVISOR}`;
+
+      response += `*${fieldEntries.length * 2}${DIVISOR}`;
+      fieldEntries.forEach(([key, value]) => {
+        response += `$${key.length}${DIVISOR}${key}${DIVISOR}`;
+        response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
+      });
+    });
+
+    return response;
+  }
+
+function getNullArray() {
   return "*-1\r\n";
 }
 
