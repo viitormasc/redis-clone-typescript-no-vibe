@@ -1,5 +1,8 @@
-import { process } from "zod/v4/core";
-import { streamDB, type RedisStreamDBArguments } from "./db_store";
+import {
+  streamDB,
+  type RedisStreamDBArguments,
+  type RedisStreamFieldValues,
+} from "./db_store";
 
 export function getStreamType(key: string): string {
   const dbStream = streamDB[key];
@@ -10,7 +13,7 @@ export function getStreamType(key: string): string {
 function createStream(
   streamKey: string,
   id: string,
-  objectValues: RedisStreamDBArguments,
+  objectValues: RedisStreamFieldValues,
 ) {
   streamDB[streamKey] = [
     {
@@ -22,7 +25,7 @@ function createStream(
 }
 
 function keyValuesArrayToObject(keyValuesArray: string[]) {
-  const object: RedisStreamDBArguments = {};
+  const object: RedisStreamFieldValues = {};
   keyValuesArray.forEach((value, index, array) => {
     if (index % 2 == 0) {
       object[value] = array[index + 1];

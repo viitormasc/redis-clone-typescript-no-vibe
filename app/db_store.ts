@@ -2,12 +2,11 @@ import { randomUUIDv7 } from "bun";
 
 type Key = string;
 
-export type RedisStreamDBArguments = Omit<
-  {
-    id: string;
-  } & Record<string, string>,
-  "id"
->;
+export type RedisStreamFieldValues = Record<string, string>;
+
+export type RedisStreamDBArguments = {
+  id: string;
+} & RedisStreamFieldValues;
 
 export interface RedisValuesDBArguments {
   id: string;
