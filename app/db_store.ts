@@ -4,9 +4,10 @@ type Key = string;
 
 export type RedisStreamFieldValues = Record<string, string>;
 
-export type RedisStreamDBArguments = {
+export interface RedisStreamEntry {
   id: string;
-} & RedisStreamFieldValues;
+  values: RedisStreamFieldValues;
+}
 
 export interface RedisValuesDBArguments {
   id: string;
@@ -17,7 +18,7 @@ export interface RedisValuesDBArguments {
 }
 
 export type RedisValuesDB = Record<Key, RedisValuesDBArguments>;
-export type RedisStreamDB = Record<Key, RedisStreamDBArguments[]>;
+export type RedisStreamDB = Record<Key, RedisStreamEntry[]>;
 
 export const valuesDB: RedisValuesDB = {};
 export const streamDB: RedisStreamDB = {};

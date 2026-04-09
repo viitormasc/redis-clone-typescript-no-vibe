@@ -6,6 +6,7 @@ import {
   setSimpleKeyValue,
   valuesDB,
 } from "./db_store";
+import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
 
 export function setKeyValue(textArray: string[]): boolean {
   const numberOfArgs = textArray.length;
@@ -59,8 +60,8 @@ export function addKeyListValue(textArray: string[]): number | null {
 
 export function getKeyListRangeValues(textArray: string[]): string[] {
   let key = textArray[0];
-  let start = parseInt(textArray[1]);
-  let stop = parseInt(textArray[2]);
+  let start = parseIntegerArgument(textArray[1]);
+  let stop = parseIntegerArgument(textArray[2]);
   const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   if (isKeyExpired) return [];
   const dbValue = valuesDB[key].value;
@@ -124,7 +125,7 @@ export function getListLength(textArray: string[]): number {
 export function removeArrayValues(textArray: string[]): string | string[] {
   const key = textArray[0];
   const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
-  const numberOfValues = Number.parseInt(textArray[1]);
+  const numberOfValues = parseIntegerArgument(textArray[1]);
   if (isKeyExpired) return "";
   if (!numberOfValues || typeof valuesDB[key].value == "string") {
     const firstValue =
@@ -148,7 +149,7 @@ export function removeArrayValues(textArray: string[]): string | string[] {
 
 export async function getBlockedPop(textArray: string[]): Promise<string> {
   const key = textArray[0];
-  const timeoutInSec = parseFloat(textArray[1]);
+  const timeoutInSec = parseFloatArgument(textArray[1]);
   console.log("timeoutInSec", timeoutInSec);
 
   if (!key || Number.isNaN(timeoutInSec))

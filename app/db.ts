@@ -16,7 +16,7 @@ import {
   getStreamType,
 } from "./stream_db";
 
-export type { RedisStreamDBArguments } from "./db_store";
+export type { RedisStreamEntry } from "./db_store";
 export {
   addKeyListValue,
   addStreamValues,

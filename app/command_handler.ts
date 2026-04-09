@@ -12,86 +12,80 @@ import {
   removeArrayValues,
   setKeyValue,
 } from "./db";
-import {
-  arrayToRespArray,
-  arrayToRestBulkString,
-  getNullArray,
-  getNullBulkString,
-  integerToResp,
-  simpleError,
-  stringToBulkString,
-  stringToSimpleResp,
-  xRangeStreamArrayToRespArray,
-  xReadStreamArrayToRespArray,
-} from "./resp_encoder";
+import { type CommandResult } from "./command_result";
 
-export async function commandToResp(messageArray: string[]): Promise<string> {
+export async function handleCommand(
+  messageArray: string[],
+): Promise<CommandResult> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
 
   switch (command) {
     case "echo":
-      return arrayToRestBulkString(textArray);
+      return { type: "bulk", value: textArray[0] ?? "" };
     case "ping":
-      return stringToSimpleResp("PONG");
+      return { type: "simple", value: "PONG" };
     case "set":
       const valueWasSet = setKeyValue(textArray);
       if (!valueWasSet) {
         throw new Error("Value was not set");
       }
-      return stringToSimpleResp("OK");
+      return { type: "simple", value: "OK" };
     case "get":
       let retrievedValue = getKeyValue(textArray);
       if (!retrievedValue) {
-        return getNullBulkString();
+        return { type: "bulk_null" };
       }
       if (!Array.isArray(retrievedValue)) {
         retrievedValue = [retrievedValue];
       }
-      return arrayToRestBulkString(retrievedValue);
+      return { type: "bulk", value: retrievedValue[0] };
     case "rpush":
       const newListLength = addKeyListValue(textArray);
       if (!newListLength) {
-        return getNullBulkString();
+        return { type: "bulk_null" };
       }
-      return integerToResp(newListLength);
+      return { type: "integer", value: newListLength };
     case "lrange":
-      return arrayToRespArray(getKeyListRangeValues(textArray));
+      return { type: "array", value: getKeyListRangeValues(textArray) };
     case "lpush":
-      return integerToResp(pushListValues(textArray));
+      return { type: "integer", value: pushListValues(textArray) };
     case "llen":
-      return integerToResp(getListLength(textArray));
+      return { type: "integer", value: getListLength(textArray) };
     case "lpop":
       const removedArrayValues = removeArrayValues(textArray);
       if (!removedArrayValues) {
-        return getNullBulkString();
+        return { type: "bulk_null" };
       }
       return Array.isArray(removedArrayValues)
-        ? arrayToRespArray(removedArrayValues)
-        : arrayToRestBulkString([removedArrayValues]);
+        ? { type: "array", value: removedArrayValues }
+        : { type: "bulk", value: removedArrayValues };
     case "blpop":
       const blpopValue = await getBlockedPop(textArray);
       if (!blpopValue) {
-        return getNullArray();
+        return { type: "array_null" };
       }
-      return arrayToRespArray([textArray[0], blpopValue]);
+      return { type: "array", value: [textArray[0], blpopValue] };
     case "type":
-      return stringToSimpleResp(getValueType(textArray));
+      return { type: "simple", value: getValueType(textArray) };
     case "xadd":
       const streamId = addStreamValues(textArray);
       if (typeof streamId !== "string" && streamId.error) {
-        return simpleError(streamId.message);
+        return { type: "error", value: streamId.message };
       }
-      return stringToBulkString(streamId as string);
+      return { type: "bulk", value: streamId as string };
     case "xrange":
       const inclusiveStream = getStreamRangeInclusive(textArray);
       if (!inclusiveStream) {
-        return getNullArray();
+        return { type: "array_null" };
       }
-      return xRangeStreamArrayToRespArray(inclusiveStream);
+      return { type: "stream_range", value: inclusiveStream };
     case "xread":
-      return xReadStreamArrayToRespArray(getStreamRangeExclusive(textArray));
+      return {
+        type: "stream_read",
+        value: getStreamRangeExclusive(textArray),
+      };
     default:
-      return "";
+      return { type: "raw", value: "" };
   }
 }

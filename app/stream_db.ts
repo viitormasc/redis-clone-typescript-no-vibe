@@ -1,8 +1,9 @@
 import {
   streamDB,
-  type RedisStreamDBArguments,
+  type RedisStreamEntry,
   type RedisStreamFieldValues,
 } from "./db_store";
+import { parseStreamId, splitStreamId } from "./command_parsers";
 
 export function getStreamType(key: string): string {
   const dbStream = streamDB[key];
@@ -18,7 +19,7 @@ function createStream(
   streamDB[streamKey] = [
     {
       id: id,
-      ...objectValues,
+      values: objectValues,
     },
   ];
   return id;
@@ -45,7 +46,7 @@ export function addStreamValues(textArray: string[]) {
   if (id == "*") {
     id = generateFullId(streamKey);
   }
-  let [msTime, incremental] = id.split("-").map((value) => parseInt(value));
+  let [msTime, incremental] = parseStreamId(id);
   if (Number.isNaN(incremental)) {
     incremental = generateIncrementalId(streamKey, msTime);
     id = msTime.toString() + "-" + incremental.toString();
@@ -61,18 +62,16 @@ export function addStreamValues(textArray: string[]) {
   if (isValidId.error) return isValidId;
   streamDB[streamKey].push({
     id: id,
-    ...objectValues,
+    values: objectValues,
   });
   return id;
 }
 
 function validateStreamID(id: string, streamKey: string) {
-  const [msTime, incremental] = id.split("-").map((value) => parseInt(value));
+  const [msTime, incremental] = parseStreamId(id);
   const lastStreamItem = streamDB[streamKey].slice(-1)[0];
   const lastId = lastStreamItem.id;
-  const [lastIdMsTime, lastIdIncremental] = lastId
-    .split("-")
-    .map((value) => parseInt(value));
+  const [lastIdMsTime, lastIdIncremental] = parseStreamId(lastId);
 
   if (lastIdMsTime > msTime) {
     return {
@@ -99,9 +98,7 @@ function generateIncrementalId(streamKey: string, msTime: number) {
   if (!stream && msTime !== 0) return 0;
   if (!stream && msTime == 0) return 1;
   const lastId = stream.slice(-1)[0].id;
-  const [lastIdMsTime, lastIdIncremental] = lastId
-    .split("-")
-    .map((value) => Number.parseInt(value));
+  const [lastIdMsTime, lastIdIncremental] = parseStreamId(lastId);
   let incremental = 0;
   if (lastIdMsTime == msTime) {
     incremental = lastIdIncremental + 1;
@@ -119,9 +116,9 @@ function generateFullId(streamKey: string) {
 
 export function getStreamRangeInclusive(
   textArray: string[],
-): RedisStreamDBArguments[] | void {
+): RedisStreamEntry[] | void {
   let [streamKey, initialId, finalId] = textArray;
-  let streamValues: RedisStreamDBArguments[];
+  let streamValues: RedisStreamEntry[];
   if (!streamDB[streamKey]) {
     return;
   }
@@ -148,8 +145,8 @@ export function getStreamRangeInclusive(
 }
 
 function processStreamIds(initialId: string, finalId: string): string[] {
-  let [initialIdMsTime, initialIdIncremental] = initialId.split("-");
-  let [finalIdMsTime, finalIdIncremental] = finalId.split("-");
+  let [initialIdMsTime, initialIdIncremental] = splitStreamId(initialId);
+  let [finalIdMsTime, finalIdIncremental] = splitStreamId(finalId);
 
   if (initialIdIncremental == undefined) initialIdIncremental = "0";
   if (finalIdIncremental == undefined) {
@@ -162,7 +159,7 @@ function processStreamIds(initialId: string, finalId: string): string[] {
 
 export function getStreamRangeExclusive(
   textArray: string[],
-): [string, RedisStreamDBArguments[]] | void {
+): [string, RedisStreamEntry[]] | void {
   const streamKey = textArray[1];
   const id = textArray[2];
 
