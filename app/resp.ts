@@ -5,7 +5,8 @@ import {
   getKeyListRangeValues,
   getKeyValue,
   getListLength,
-  getStreamRange,
+  getStreamRangeExclusive,
+  getStreamRangeInclusive as getStreamRangeInclusive,
   getValueType,
   pushListValues,
   removeArrayValues,
@@ -113,12 +114,16 @@ export async function restArrayToRestResponse(
         break;
       }
     case "xrange":
-      const arrayStream = getStreamRange(textArray);
-      if (!arrayStream) {
-        respResponse = getNullArray()
-        break
+      let arrayStreamInclusive = getStreamRangeInclusive(textArray);
+      if (!arrayStreamInclusive) {
+        respResponse = getNullArray();
+        break;
       }
-      respResponse = streamArrayToRespArray(arrayStream);
+      respResponse = xRangeStreamArrayToRespArray(arrayStreamInclusive);
+      break;
+    case "xread":
+      const arrayStreamExclusive = getStreamRangeExclusive(textArray);
+      respResponse = xReadStreamArrayToRespArray(arrayStreamExclusive);
       break;
   }
   return respResponse;
@@ -168,25 +173,56 @@ function arrayToRespArray(array: string[]): string {
   return response;
 }
 
-function streamArrayToRespArray(streamArray: RedisStreamDBArguments[]): string {
-    let response = `*${streamArray.length}${DIVISOR}`;
+function xRangeStreamArrayToRespArray(
+  streamArray: RedisStreamDBArguments[],
+): string {
+  let response = `*${streamArray.length}${DIVISOR}`;
 
-    streamArray.forEach((streamItem) => {
-      const { id, ...fields } = streamItem;
-      const fieldEntries = Object.entries(fields);
+  streamArray.forEach((streamItem) => {
+    const { id, ...fields } = streamItem;
+    const fieldEntries = Object.entries(fields);
 
-      response += `*2${DIVISOR}`;
-      response += `$${id.length}${DIVISOR}${id}${DIVISOR}`;
+    response += `*2${DIVISOR}`;
+    response += `$${id.length}${DIVISOR}${id}${DIVISOR}`;
 
-      response += `*${fieldEntries.length * 2}${DIVISOR}`;
-      fieldEntries.forEach(([key, value]) => {
-        response += `$${key.length}${DIVISOR}${key}${DIVISOR}`;
-        response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
-      });
+    response += `*${fieldEntries.length * 2}${DIVISOR}`;
+    fieldEntries.forEach(([key, value]) => {
+      response += `$${key.length}${DIVISOR}${key}${DIVISOR}`;
+      response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
     });
+  });
 
-    return response;
-  }
+  return response;
+}
+
+function xReadStreamArrayToRespArray(
+  streamArray: [string, RedisStreamDBArguments[]] | void,
+): string {
+  if (!streamArray) return getNullArray();
+
+  const [streamKey, entries] = streamArray;
+
+  let response = `*1${DIVISOR}`;
+  response += `*2${DIVISOR}`;
+  response += `$${streamKey.length}${DIVISOR}${streamKey}${DIVISOR}`;
+  response += `*${entries.length}${DIVISOR}`;
+
+  entries.forEach((entry) => {
+    const { id, ...fields } = entry;
+    const fieldEntries = Object.entries(fields);
+
+    response += `*2${DIVISOR}`;
+    response += `$${id.length}${DIVISOR}${id}${DIVISOR}`;
+    response += `*${fieldEntries.length * 2}${DIVISOR}`;
+
+    fieldEntries.forEach(([key, value]) => {
+      response += `$${key.length}${DIVISOR}${key}${DIVISOR}`;
+      response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
+    });
+  });
+
+  return response;
+}
 
 function getNullArray() {
   return "*-1\r\n";

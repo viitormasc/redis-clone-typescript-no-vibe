@@ -372,7 +372,7 @@ function generateFullId(streamKey: string) {
   return msTime.toString() + "-" + incremental.toString();
 }
 
-export function getStreamRange(
+export function getStreamRangeInclusive(
   textArray: string[],
 ): RedisStreamDBArguments[] | void {
   let [streamKey, initialId, finalId] = textArray;
@@ -411,8 +411,21 @@ function processStreamIds(initialId: string, finalId: string): string[] {
     finalIdIncremental = "*";
   }
   initialId = [initialIdMsTime, initialIdIncremental].join("-");
-  console.log("initialId", initialId);
   finalId = [finalIdMsTime, finalIdIncremental].join("-");
-  console.log("finalId", finalId);
   return [initialId, finalId];
+}
+
+export function getStreamRangeExclusive(
+  textArray: string[],
+): [string, RedisStreamDBArguments[]] | void {
+  const streamKey = textArray[1];
+  const id = textArray[2];
+
+  const dbStreamValues = streamDB[streamKey];
+
+  if (!dbStreamValues) return;
+
+  const initialIndex = dbStreamValues.findIndex((value) => value.id == id) + 1;
+
+  return [streamKey, dbStreamValues.slice(initialIndex)];
 }
