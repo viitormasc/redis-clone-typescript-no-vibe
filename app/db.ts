@@ -385,7 +385,7 @@ export function getStreamRange(
   if (finalId[-1] == "*") getAllValuesFromId = true;
 
   const allDbStreamValues = streamDB[streamKey];
-  const firstIndex = allDbStreamValues.findIndex(
+  const firstIndex = initialId =="-" ? 0 : allDbStreamValues.findIndex(
     (value) => value.id == initialId,
   );
   const lastIndex = allDbStreamValues.findLastIndex((value) => {
