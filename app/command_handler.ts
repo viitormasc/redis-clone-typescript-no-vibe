@@ -83,7 +83,7 @@ export async function handleCommand(
     case "xread":
       return {
         type: "stream_read",
-        value: getStreamRangeExclusive(textArray),
+        value: await getStreamRangeExclusive(textArray),
       };
     default:
       return { type: "raw", value: "" };

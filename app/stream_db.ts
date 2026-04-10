@@ -3,6 +3,7 @@ import {
   type RedisStreamEntry,
   type RedisStreamFieldValues,
   type StreamKey,
+  type StreamKeyIds,
   type StreamReadData,
   type TextArray,
 } from "./db_store";
@@ -160,13 +161,29 @@ function processStreamIds(initialId: string, finalId: string): string[] {
   return [initialId, finalId];
 }
 
-export function getStreamRangeExclusive(
+export async function getStreamRangeExclusive(
   textArray: string[],
-): StreamReadData | void {
-  textArray.shift();
-  const streamLength = textArray.length;
-  const numberOfStreamKeys = streamLength / 2;
-
+): Promise<StreamReadData | void> {
+  const parameter = textArray.shift();
+  let streamLength: number;
+  let numberOfStreamKeys: number;
+  if (parameter?.toLowerCase() == "block") {
+    const msBlockTime = Number.parseInt(textArray.shift()!!);
+    // get rid of the streams name
+    textArray.shift();
+    if (Number.isNaN(msBlockTime)) {
+      return;
+    }
+    streamLength = textArray.length;
+    numberOfStreamKeys = streamLength / 2;
+    return await processStreamRangeExclusiveAsync(
+      numberOfStreamKeys,
+      textArray,
+      msBlockTime,
+    );
+  }
+  streamLength = textArray.length;
+  numberOfStreamKeys = streamLength / 2;
   return processStreamRangeExclusive(numberOfStreamKeys, textArray);
 }
 
@@ -174,8 +191,10 @@ function processStreamRangeExclusive(
   numberOfStreamKeys: number,
   textArray: TextArray,
 ): StreamReadData {
-  const streamKeys: StreamKey[] = textArray.splice(0, numberOfStreamKeys);
-  const ids: string[] = textArray;
+  const { streamKeys, ids } = getStreamKeysAndIds(
+    textArray,
+    numberOfStreamKeys,
+  );
   const extractedValues: StreamReadData | void = [];
   streamKeys.forEach((streamKey, index) => {
     const dbStreamValues = getStreamValues(streamKey);
@@ -185,11 +204,59 @@ function processStreamRangeExclusive(
     const extractedValuesFromStream = dbStreamValues.slice(initialIndex);
     extractedValues.push([streamKey, extractedValuesFromStream]);
   });
-  console.log("extractedValues;", extractedValues);
   return extractedValues;
 }
 
 function getStreamValues(streamKey: string): RedisStreamEntry[] | void {
   if (!streamDB[streamKey]) return;
   return streamDB[streamKey];
+}
+
+function getStreamKeysAndIds(
+  textArray: TextArray,
+  numberOfStreamKeys: number,
+): StreamKeyIds {
+  const streamKeys: StreamKey[] = textArray.splice(0, numberOfStreamKeys);
+  const ids: string[] = textArray;
+
+  return {
+    streamKeys,
+    ids,
+  };
+}
+
+async function processStreamRangeExclusiveAsync(
+  numberOfStreamKeys: number,
+  textArray: TextArray,
+  msBlockTime: number,
+) {
+  const existingValues = processStreamRangeExclusive(
+    numberOfStreamKeys,
+    textArray,
+  );
+  if (existingValues) return existingValues;
+
+  const timeLimit = Date.now() + msBlockTime;
+
+  const newInputedValue = new Promise((resolve) => {
+    const timer = setInterval(() => {
+      const newInputedValue = processStreamRangeExclusive(
+        numberOfStreamKeys,
+        textArray,
+      );
+
+      if (newInputedValue) {
+        clearInterval(timer);
+        resolve(newInputedValue);
+        return;
+      }
+
+      if (Date.now() >= timeLimit) {
+        clearInterval(timer);
+        resolve(null);
+      }
+    }, 10);
+  });
+
+  return newInputedValue;
 }
