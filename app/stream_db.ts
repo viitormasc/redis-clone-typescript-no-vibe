@@ -236,7 +236,7 @@ async function processStreamRangeExclusiveAsync(
     textArray,
   );
   if (existingValues.length > 0) return existingValues;
-
+  if (msBlockTime === 0) msBlockTime = Infinity;
   const timeLimit = Date.now() + msBlockTime;
 
   const newInputedValue = new Promise((resolve) => {
