@@ -202,6 +202,7 @@ function processStreamRangeExclusive(
     const initialIndex =
       dbStreamValues.findIndex((value) => value.id == ids[index]) + 1;
     const extractedValuesFromStream = dbStreamValues.slice(initialIndex);
+    if (extractedValuesFromStream.length == 0) return;
     extractedValues.push([streamKey, extractedValuesFromStream]);
   });
   return extractedValues;
@@ -216,8 +217,8 @@ function getStreamKeysAndIds(
   textArray: TextArray,
   numberOfStreamKeys: number,
 ): StreamKeyIds {
-  const streamKeys: StreamKey[] = textArray.splice(0, numberOfStreamKeys);
-  const ids: string[] = textArray;
+  const streamKeys: StreamKey[] = textArray.slice(0, numberOfStreamKeys);
+  const ids: string[] = textArray.slice(numberOfStreamKeys, textArray.length);
 
   return {
     streamKeys,
@@ -234,7 +235,7 @@ async function processStreamRangeExclusiveAsync(
     numberOfStreamKeys,
     textArray,
   );
-  if (existingValues) return existingValues;
+  if (existingValues.length > 0) return existingValues;
 
   const timeLimit = Date.now() + msBlockTime;
 
@@ -244,11 +245,9 @@ async function processStreamRangeExclusiveAsync(
         numberOfStreamKeys,
         textArray,
       );
-
-      if (newInputedValue) {
+      if (newInputedValue.length > 0) {
         clearInterval(timer);
         resolve(newInputedValue);
-        return;
       }
 
       if (Date.now() >= timeLimit) {
