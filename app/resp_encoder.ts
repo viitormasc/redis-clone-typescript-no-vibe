@@ -1,4 +1,5 @@
 import { type RedisStreamEntry } from "./db";
+import type { StreamReadData } from "./db_store";
 
 const DIVISOR = "\r\n";
 
@@ -72,27 +73,26 @@ export function xRangeStreamArrayToRespArray(
 }
 
 export function xReadStreamArrayToRespArray(
-  streamArray: [string, RedisStreamEntry[]] | void,
+  streamDataArray: StreamReadData | void,
 ): string {
-  if (!streamArray) return getNullArray();
-
-  const [streamKey, entries] = streamArray;
-
-  let response = `*1${DIVISOR}`;
-  response += `*2${DIVISOR}`;
-  response += `$${streamKey.length}${DIVISOR}${streamKey}${DIVISOR}`;
-  response += `*${entries.length}${DIVISOR}`;
-
-  entries.forEach((entry) => {
-    const fieldEntries = Object.entries(entry.values);
-
+  if (!streamDataArray) return getNullArray();
+  let response = `*${streamDataArray.length}${DIVISOR}`;
+  streamDataArray.forEach(([streamKey, entries]) => {
     response += `*2${DIVISOR}`;
-    response += `$${entry.id.length}${DIVISOR}${entry.id}${DIVISOR}`;
-    response += `*${fieldEntries.length * 2}${DIVISOR}`;
+    response += `$${streamKey.length}${DIVISOR}${streamKey}${DIVISOR}`;
+    response += `*${entries.length}${DIVISOR}`;
 
-    fieldEntries.forEach(([key, value]) => {
-      response += `$${key.length}${DIVISOR}${key}${DIVISOR}`;
-      response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
+    entries.forEach((entry) => {
+      const fieldEntries = Object.entries(entry.values);
+
+      response += `*2${DIVISOR}`;
+      response += `$${entry.id.length}${DIVISOR}${entry.id}${DIVISOR}`;
+      response += `*${fieldEntries.length * 2}${DIVISOR}`;
+
+      fieldEntries.forEach(([key, value]) => {
+        response += `$${key.length}${DIVISOR}${key}${DIVISOR}`;
+        response += `$${value.length}${DIVISOR}${value}${DIVISOR}`;
+      });
     });
   });
 

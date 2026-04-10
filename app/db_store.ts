@@ -3,7 +3,9 @@ import { randomUUIDv7 } from "bun";
 type Key = string;
 
 export type RedisStreamFieldValues = Record<string, string>;
-
+export type TextArray = string[];
+export type StreamKey = string;
+export type StreamReadData = [StreamKey, RedisStreamEntry[]][];
 export interface RedisStreamEntry {
   id: string;
   values: RedisStreamFieldValues;

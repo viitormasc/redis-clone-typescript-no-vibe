@@ -2,6 +2,9 @@ import {
   streamDB,
   type RedisStreamEntry,
   type RedisStreamFieldValues,
+  type StreamKey,
+  type StreamReadData,
+  type TextArray,
 } from "./db_store";
 import { parseStreamId, splitStreamId } from "./command_parsers";
 
@@ -159,15 +162,34 @@ function processStreamIds(initialId: string, finalId: string): string[] {
 
 export function getStreamRangeExclusive(
   textArray: string[],
-): [string, RedisStreamEntry[]] | void {
-  const streamKey = textArray[1];
-  const id = textArray[2];
+): StreamReadData | void {
+  textArray.shift();
+  const streamLength = textArray.length;
+  const numberOfStreamKeys = streamLength / 2;
 
-  const dbStreamValues = streamDB[streamKey];
+  return processStreamRangeExclusive(numberOfStreamKeys, textArray);
+}
 
-  if (!dbStreamValues) return;
+function processStreamRangeExclusive(
+  numberOfStreamKeys: number,
+  textArray: TextArray,
+): StreamReadData {
+  const streamKeys: StreamKey[] = textArray.splice(0, numberOfStreamKeys);
+  const ids: string[] = textArray;
+  const extractedValues: StreamReadData | void = [];
+  streamKeys.forEach((streamKey, index) => {
+    const dbStreamValues = getStreamValues(streamKey);
+    if (!dbStreamValues) return;
+    const initialIndex =
+      dbStreamValues.findIndex((value) => value.id == ids[index]) + 1;
+    const extractedValuesFromStream = dbStreamValues.slice(initialIndex);
+    extractedValues.push([streamKey, extractedValuesFromStream]);
+  });
+  console.log("extractedValues;", extractedValues);
+  return extractedValues;
+}
 
-  const initialIndex = dbStreamValues.findIndex((value) => value.id == id) + 1;
-
-  return [streamKey, dbStreamValues.slice(initialIndex)];
+function getStreamValues(streamKey: string): RedisStreamEntry[] | void {
+  if (!streamDB[streamKey]) return;
+  return streamDB[streamKey];
 }
