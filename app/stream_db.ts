@@ -1,5 +1,6 @@
 import {
   streamDB,
+  type Id,
   type RedisStreamEntry,
   type RedisStreamFieldValues,
   type StreamKey,
@@ -208,9 +209,26 @@ function processStreamRangeExclusive(
   return extractedValues;
 }
 
-function getStreamValues(streamKey: string): RedisStreamEntry[] | void {
+function getStreamValues(streamKey: StreamKey): RedisStreamEntry[] | void {
   if (!streamDB[streamKey]) return;
   return streamDB[streamKey];
+}
+
+function processXreadBlock$(
+  streamKeys: StreamKey[],
+  ids: Id[],
+  textArray: TextArray,
+) {
+  ids.forEach((id, index, idsArray) => {
+    if (id == "$") {
+      const dbStreamValues = getStreamValues(streamKeys[index]);
+      if (!dbStreamValues) return;
+      idsArray[index] = dbStreamValues.slice(-1)[0].id;
+      const indexOf$ = textArray.indexOf("$");
+      textArray[indexOf$] = idsArray[index];
+      return;
+    }
+  });
 }
 
 function getStreamKeysAndIds(
@@ -219,7 +237,7 @@ function getStreamKeysAndIds(
 ): StreamKeyIds {
   const streamKeys: StreamKey[] = textArray.slice(0, numberOfStreamKeys);
   const ids: string[] = textArray.slice(numberOfStreamKeys, textArray.length);
-
+  if (textArray.includes("$")) processXreadBlock$(streamKeys, ids, textArray);
   return {
     streamKeys,
     ids,
@@ -230,7 +248,7 @@ async function processStreamRangeExclusiveAsync(
   numberOfStreamKeys: number,
   textArray: TextArray,
   msBlockTime: number,
-) {
+): Promise<StreamReadData | void> {
   const existingValues = processStreamRangeExclusive(
     numberOfStreamKeys,
     textArray,
@@ -239,7 +257,7 @@ async function processStreamRangeExclusiveAsync(
   if (msBlockTime === 0) msBlockTime = Infinity;
   const timeLimit = Date.now() + msBlockTime;
 
-  const newInputedValue = new Promise((resolve) => {
+  const newInputedValue = new Promise<StreamReadData | void>((resolve) => {
     const timer = setInterval(() => {
       const newInputedValue = processStreamRangeExclusive(
         numberOfStreamKeys,
@@ -252,7 +270,7 @@ async function processStreamRangeExclusiveAsync(
 
       if (Date.now() >= timeLimit) {
         clearInterval(timer);
-        resolve(null);
+        resolve();
       }
     }, 10);
   });
