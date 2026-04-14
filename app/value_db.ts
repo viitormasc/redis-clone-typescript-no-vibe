@@ -199,14 +199,14 @@ export function getValueType(textArray: TextArray): string {
 export function incrementValue(textArray: TextArray): number | StringError {
   let value = getKeyValue(textArray);
   if (!value) {
-  setSimpleKeyValue(textArray[0],"1");
+    setSimpleKeyValue(textArray[0], "1");
     return 1;
   }
-  if (value.length >1) {
-    return 'value is not an integer or out of range'
+  if (value.length > 1) {
+    return "ERR value is not an integer or out of range";
   }
   if (Number.isNaN(parseInt(value as string))) {
-    return 'value is not an integer or out of range'
+    return "ERR value is not an integer or out of range";
   }
 
   let valueInteger = parseInt(value[0]) + 1;
