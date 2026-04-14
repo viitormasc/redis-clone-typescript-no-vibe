@@ -10,6 +10,8 @@ import {
 } from "./db_store";
 import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
 
+let IS_CONNECTION_OPEN = false;
+
 export function setKeyValue(textArray: string[]): boolean {
   const numberOfArgs = textArray.length;
   const [key, value] = textArray;
@@ -212,4 +214,9 @@ export function incrementValue(textArray: TextArray): number | StringError {
   let valueInteger = parseInt(value[0]) + 1;
   setSimpleKeyValue(textArray[0], valueInteger.toString());
   return valueInteger;
+}
+
+export function openMultiConnection(): string {
+  IS_CONNECTION_OPEN = true;
+  return "OK";
 }

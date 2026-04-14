@@ -13,7 +13,7 @@ import {
   setKeyValue,
 } from "./db";
 import { type CommandResult } from "./command_result";
-import { incrementValue } from "./value_db";
+import { incrementValue, openMultiConnection } from "./value_db";
 
 export async function handleCommand(
   messageArray: string[],
@@ -97,6 +97,11 @@ export async function handleCommand(
             type: "error",
             value: incrementedValue,
           };
+    case "multi":
+      return {
+        type: "simple",
+        value: openMultiConnection(),
+      };
     default:
       return { type: "raw", value: "" };
   }
