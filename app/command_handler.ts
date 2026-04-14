@@ -13,13 +13,27 @@ import {
   setKeyValue,
 } from "./db";
 import { type CommandResult } from "./command_result";
-import { incrementValue, openMultiConnection } from "./value_db";
+import {
+  incrementValue,
+  IS_CONNECTION_OPEN,
+  openMultiConnection,
+  runQueuedCommands,
+} from "./value_db";
+
+export const QUEE_COMMANDS: string[] = [];
 
 export async function handleCommand(
   messageArray: string[],
 ): Promise<CommandResult> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
+  if (IS_CONNECTION_OPEN) {
+    QUEE_COMMANDS.push(command);
+    return {
+      type: "simple",
+      value: "QUEUED",
+    };
+  }
 
   switch (command) {
     case "echo":
@@ -102,6 +116,17 @@ export async function handleCommand(
         type: "simple",
         value: openMultiConnection(),
       };
+    case "exec":
+      const execResponse = runQueuedCommands();
+      return execResponse == "ERR EXEC without MULTI"
+        ? {
+            type: "error",
+            value: execResponse,
+          }
+        : {
+            type: "simple",
+            value: execResponse,
+          };
     default:
       return { type: "raw", value: "" };
   }

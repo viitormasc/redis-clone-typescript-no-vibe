@@ -9,8 +9,9 @@ import {
   type TextArray,
 } from "./db_store";
 import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
+import { QUEE_COMMANDS } from "./command_handler";
 
-let IS_CONNECTION_OPEN = false;
+export let IS_CONNECTION_OPEN: boolean = false;
 
 export function setKeyValue(textArray: string[]): boolean {
   const numberOfArgs = textArray.length;
@@ -219,4 +220,11 @@ export function incrementValue(textArray: TextArray): number | StringError {
 export function openMultiConnection(): string {
   IS_CONNECTION_OPEN = true;
   return "OK";
+}
+
+export function runQueuedCommands(): StringError | void {
+  if (IS_CONNECTION_OPEN == false) {
+    return "ERR EXEC without MULTI";
+  }
+  return;
 }
