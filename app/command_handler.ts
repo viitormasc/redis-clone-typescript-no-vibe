@@ -20,13 +20,15 @@ import {
   runQueuedCommands,
 } from "./value_db";
 import type { UUID } from "crypto";
+import type { QueueCommands, TextArray } from "./db_store";
+import { encodeCommandResult } from "./resp";
 
-export const QUEE_COMMANDS: string[] = [];
+export const QUEUE_COMMANDS: QueueCommands[] = [];
 
 export async function handleCommand(
   messageArray: string[],
   connectionUUID: UUID,
-): Promise<CommandResult> {
+): Promise<string> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
   if (
@@ -34,13 +36,25 @@ export async function handleCommand(
     CONNECTION_INFO.uuid === connectionUUID &&
     command !== "exec"
   ) {
-    QUEE_COMMANDS.push(command);
-    return {
+    QUEUE_COMMANDS.push({
+      command,
+      textArray,
+    });
+    return encodeCommandResult({
       type: "simple",
       value: "QUEUED",
-    };
+    });
   }
+  const result = await findAndExecCommand(command, textArray, connectionUUID);
 
+  return encodeCommandResult(result);
+}
+
+export async function findAndExecCommand(
+  command: string,
+  textArray: TextArray,
+  connectionUUID: UUID,
+): Promise<CommandResult> {
   switch (command) {
     case "echo":
       return { type: "bulk", value: textArray[0] ?? "" };
@@ -123,15 +137,15 @@ export async function handleCommand(
         value: openMultiConnection(connectionUUID),
       };
     case "exec":
-      const execResponse = runQueuedCommands();
-      return execResponse == "ERR EXEC without MULTI"
+      const execResponse = await runQueuedCommands();
+      return typeof execResponse === "string"
         ? {
             type: "error",
             value: execResponse,
           }
         : {
-            type: "array",
-            value: execResponse as string[],
+            type: "exec",
+            value: execResponse,
           };
     default:
       return { type: "raw", value: "" };

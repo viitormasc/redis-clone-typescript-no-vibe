@@ -8,6 +8,7 @@ export type CommandResult =
   | { type: "integer"; value: number }
   | { type: "array"; value: string[] }
   | { type: "array_null" }
+  | { type: "exec"; value: CommandResult[] }
   | { type: "stream_range"; value: RedisStreamEntry[] }
   | { type: "stream_read"; value: StreamReadData | void }
   | { type: "error"; value: string }

@@ -22,10 +22,10 @@ export async function restArrayToRestResponse(
   console.log("respArrayText", respArrayText);
   console.log("messageArray", messageArray);
   const result = await handleCommand(messageArray, connectionUUID);
-  return encodeCommandResult(result);
+  return result;
 }
 
-function encodeCommandResult(result: CommandResult): string {
+export function encodeCommandResult(result: CommandResult): string {
   switch (result.type) {
     case "simple":
       return stringToSimpleResp(result.value);
@@ -39,6 +39,8 @@ function encodeCommandResult(result: CommandResult): string {
       return arrayToRespArray(result.value);
     case "array_null":
       return getNullArray();
+    case "exec":
+      return encodeExecResult(result.value);
     case "stream_range":
       return xRangeStreamArrayToRespArray(result.value);
     case "stream_read":
@@ -48,4 +50,14 @@ function encodeCommandResult(result: CommandResult): string {
     case "raw":
       return result.value;
   }
+}
+
+function encodeExecResult(results: CommandResult[]): string {
+  let response = `*${results.length}\r\n`;
+
+  results.forEach((result) => {
+    response += encodeCommandResult(result);
+  });
+
+  return response;
 }

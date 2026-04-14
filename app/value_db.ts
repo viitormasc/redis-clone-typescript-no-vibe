@@ -10,8 +10,9 @@ import {
   type TextArray,
 } from "./db_store";
 import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
-import { QUEE_COMMANDS } from "./command_handler";
+import { findAndExecCommand, QUEUE_COMMANDS } from "./command_handler";
 import type { UUID } from "crypto";
+import { type CommandResult } from "./command_result";
 
 export let CONNECTION_INFO: Connection = {
   uuid: "c896ca37-fe03-42a1-bd16-215169186004",
@@ -232,13 +233,25 @@ export function openMultiConnection(connectionUUID: UUID): string {
   return "OK";
 }
 
-export function runQueuedCommands(): StringError | string[] {
+export async function runQueuedCommands(): Promise<StringError | CommandResult[]> {
   if (CONNECTION_INFO.open == false) {
     return "ERR EXEC without MULTI";
   }
-  if (QUEE_COMMANDS.length == 0) {
+  if (QUEUE_COMMANDS.length == 0) {
     CONNECTION_INFO.open = false;
     return [];
   }
-  return [];
+
+  const responses: CommandResult[] = [];
+  while (QUEUE_COMMANDS.length) {
+    const fullCommand = QUEUE_COMMANDS.shift()!!;
+    const response = await findAndExecCommand(
+      fullCommand.command,
+      fullCommand.textArray,
+      CONNECTION_INFO.uuid,
+    );
+    responses.push(response);
+  }
+  CONNECTION_INFO.open = false;
+  return responses;
 }
