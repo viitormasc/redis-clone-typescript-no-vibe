@@ -5,13 +5,18 @@ import {
   setKeyValueWithPx,
   setSimpleKeyValue,
   valuesDB,
+  type Connection,
   type StringError,
   type TextArray,
 } from "./db_store";
 import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
 import { QUEE_COMMANDS } from "./command_handler";
+import type { UUID } from "crypto";
 
-export let IS_CONNECTION_OPEN: boolean = false;
+export let CONNECTION_INFO: Connection = {
+  uuid: "c896ca37-fe03-42a1-bd16-215169186004",
+  open: false,
+};
 
 export function setKeyValue(textArray: string[]): boolean {
   const numberOfArgs = textArray.length;
@@ -155,7 +160,6 @@ export function removeArrayValues(textArray: string[]): string | string[] {
 export async function getBlockedPop(textArray: string[]): Promise<string> {
   const key = textArray[0];
   const timeoutInSec = parseFloatArgument(textArray[1]);
-  console.log("timeoutInSec", timeoutInSec);
 
   if (!key || Number.isNaN(timeoutInSec))
     throw new Error("Blpop command must have list key and timeout in seconds");
@@ -220,17 +224,20 @@ export function incrementValue(textArray: TextArray): number | StringError {
   return valueInteger;
 }
 
-export function openMultiConnection(): string {
-  IS_CONNECTION_OPEN = true;
+export function openMultiConnection(connectionUUID: UUID): string {
+  CONNECTION_INFO = {
+    uuid: connectionUUID,
+    open: true,
+  };
   return "OK";
 }
 
 export function runQueuedCommands(): StringError | string[] {
-  if (IS_CONNECTION_OPEN == false) {
+  if (CONNECTION_INFO.open == false) {
     return "ERR EXEC without MULTI";
   }
   if (QUEE_COMMANDS.length == 0) {
-    IS_CONNECTION_OPEN = false;
+    CONNECTION_INFO.open = false;
     return [];
   }
   return [];

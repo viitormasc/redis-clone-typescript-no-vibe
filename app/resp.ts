@@ -12,14 +12,16 @@ import {
   xRangeStreamArrayToRespArray,
   xReadStreamArrayToRespArray,
 } from "./resp_encoder";
+import type { UUID } from "crypto";
 
 export async function restArrayToRestResponse(
   buffer: NonSharedBuffer | string,
+  connectionUUID: UUID,
 ): Promise<string> {
   const { respArrayText, messageArray } = parseRespCommand(buffer);
   console.log("respArrayText", respArrayText);
   console.log("messageArray", messageArray);
-  const result = await handleCommand(messageArray);
+  const result = await handleCommand(messageArray, connectionUUID);
   return encodeCommandResult(result);
 }
 

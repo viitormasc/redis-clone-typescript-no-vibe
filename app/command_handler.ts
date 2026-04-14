@@ -15,19 +15,25 @@ import {
 import { type CommandResult } from "./command_result";
 import {
   incrementValue,
-  IS_CONNECTION_OPEN,
+  CONNECTION_INFO,
   openMultiConnection,
   runQueuedCommands,
 } from "./value_db";
+import type { UUID } from "crypto";
 
 export const QUEE_COMMANDS: string[] = [];
 
 export async function handleCommand(
   messageArray: string[],
+  connectionUUID: UUID,
 ): Promise<CommandResult> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
-  if (IS_CONNECTION_OPEN && command !== "exec") {
+  if (
+    CONNECTION_INFO.open &&
+    CONNECTION_INFO.uuid === connectionUUID &&
+    command !== "exec"
+  ) {
     QUEE_COMMANDS.push(command);
     return {
       type: "simple",
@@ -114,7 +120,7 @@ export async function handleCommand(
     case "multi":
       return {
         type: "simple",
-        value: openMultiConnection(),
+        value: openMultiConnection(connectionUUID),
       };
     case "exec":
       const execResponse = runQueuedCommands();
