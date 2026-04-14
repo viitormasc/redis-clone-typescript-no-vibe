@@ -159,13 +159,13 @@ export async function getBlockedPop(textArray: string[]): Promise<string> {
 
   if (!key || Number.isNaN(timeoutInSec))
     throw new Error("Blpop command must have list key and timeout in seconds");
-  let poppedValue: string;
-  if (!valuesDB[key]) {
-    poppedValue = await popListValueAsync(key, timeoutInSec);
-    return poppedValue;
+
+  const currentList = valuesDB[key]?.value;
+  if (currentList && currentList.length > 0) {
+    return popListValue(key) as string;
   }
-  poppedValue = popListValue(key) as string;
-  return poppedValue;
+
+  return popListValueAsync(key, timeoutInSec);
 }
 
 function popListValueAsync(key: string, timeoutInSec: number) {
@@ -173,14 +173,17 @@ function popListValueAsync(key: string, timeoutInSec: number) {
   const timeoutInMs = timeoutInSec * 1000 || Infinity;
   const timeLimit = now + timeoutInMs;
   return new Promise<string>((resolve, reject) => {
-    setInterval(() => {
+    const interval = setInterval(() => {
       const removedValue = popListValue(key);
       if (Date.now() >= timeLimit) {
+        clearInterval(interval);
         resolve("");
       }
       if (removedValue && Date.now() <= timeLimit) {
+        clearInterval(interval);
         resolve(removedValue);
       } else if (removedValue && Date.now() > timeLimit) {
+        clearInterval(interval);
         resolve("");
       }
     }, 1);
