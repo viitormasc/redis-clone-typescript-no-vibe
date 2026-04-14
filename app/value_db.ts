@@ -5,6 +5,7 @@ import {
   setKeyValueWithPx,
   setSimpleKeyValue,
   valuesDB,
+  type StringError,
   type TextArray,
 } from "./db_store";
 import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
@@ -195,17 +196,17 @@ export function getValueType(textArray: TextArray): string {
   return "none";
 }
 
-export function incrementValue(textArray: TextArray): number | void {
+export function incrementValue(textArray: TextArray): number | StringError {
   let value = getKeyValue(textArray);
   if (!value) {
   setSimpleKeyValue(textArray[0],"1");
     return 1;
   }
   if (value.length >1) {
-    return;
+    return 'value is not an integer or out of range'
   }
   if (Number.isNaN(parseInt(value as string))) {
-    return;
+    return 'value is not an integer or out of range'
   }
 
   let valueInteger = parseInt(value[0]) + 1;

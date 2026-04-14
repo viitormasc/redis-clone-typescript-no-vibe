@@ -4,6 +4,7 @@ type Key = string;
 
 export type RedisStreamFieldValues = Record<string, string>;
 export type TextArray = string[];
+export type StringError = string 
 export type Id = string;
 export type StreamKeyIds = {
   streamKeys: StreamKey[];

@@ -87,10 +87,16 @@ export async function handleCommand(
         value: await getStreamRangeExclusive(textArray),
       };
     case "incr":
-      return {
-        type: "integer",
-        value: incrementValue(textArray),
-      };
+      const incrementedValue = incrementValue(textArray);
+      return typeof incrementedValue == "number"
+        ? {
+            type: "integer",
+            value: incrementedValue,
+          }
+        : {
+            type: "error",
+            value: incrementedValue,
+          };
     default:
       return { type: "raw", value: "" };
   }
