@@ -13,6 +13,7 @@ import {
   setKeyValue,
 } from "./db";
 import { type CommandResult } from "./command_result";
+import { incrementValue } from "./value_db";
 
 export async function handleCommand(
   messageArray: string[],
@@ -84,6 +85,11 @@ export async function handleCommand(
       return {
         type: "stream_read",
         value: await getStreamRangeExclusive(textArray),
+      };
+    case "incr":
+      return {
+        type: "integer",
+        value: incrementValue(textArray),
       };
     default:
       return { type: "raw", value: "" };

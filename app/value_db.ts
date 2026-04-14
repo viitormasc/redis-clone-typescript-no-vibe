@@ -5,6 +5,7 @@ import {
   setKeyValueWithPx,
   setSimpleKeyValue,
   valuesDB,
+  type TextArray,
 } from "./db_store";
 import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
 
@@ -182,7 +183,7 @@ function popListValueAsync(key: string, timeoutInSec: number) {
   });
 }
 
-export function getValueType(textArray: string[]): string {
+export function getValueType(textArray: TextArray): string {
   const key = textArray[0];
   const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   if (isKeyExpired) {
@@ -192,4 +193,22 @@ export function getValueType(textArray: string[]): string {
   if (dbValue.length == 1) return "string";
 
   return "none";
+}
+
+export function incrementValue(textArray: TextArray): number | void {
+  let value = getKeyValue(textArray);
+  if (!value) {
+  setSimpleKeyValue(textArray[0],"1");
+    return 1;
+  }
+  if (value.length >1) {
+    return;
+  }
+  if (Number.isNaN(parseInt(value as string))) {
+    return;
+  }
+
+  let valueInteger = parseInt(value[0]) + 1;
+  setSimpleKeyValue(textArray[0], valueInteger.toString());
+  return valueInteger;
 }
