@@ -225,9 +225,13 @@ export function openMultiConnection(): string {
   return "OK";
 }
 
-export function runQueuedCommands(): StringError | void {
+export function runQueuedCommands(): StringError | string[] {
   if (IS_CONNECTION_OPEN == false) {
     return "ERR EXEC without MULTI";
   }
-  return;
+  if (QUEE_COMMANDS.length == 0) {
+    IS_CONNECTION_OPEN = false;
+    return [];
+  }
+  return [];
 }

@@ -27,7 +27,7 @@ export async function handleCommand(
 ): Promise<CommandResult> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
-  if (IS_CONNECTION_OPEN) {
+  if (IS_CONNECTION_OPEN && command !== "exec") {
     QUEE_COMMANDS.push(command);
     return {
       type: "simple",
@@ -124,8 +124,8 @@ export async function handleCommand(
             value: execResponse,
           }
         : {
-            type: "simple",
-            value: execResponse,
+            type: "array",
+            value: execResponse as string[],
           };
     default:
       return { type: "raw", value: "" };
