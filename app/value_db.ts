@@ -1,3 +1,7 @@
+import type { UUID } from "crypto";
+import { findAndExecCommand, QUEUE_COMMANDS } from "./command_handler";
+import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
+import { type CommandResult } from "./command_result";
 import {
   dbValueToArray,
   isKeyValueExpired,
@@ -6,19 +10,19 @@ import {
   setSimpleKeyValue,
   valuesDB,
   type Connection,
-  type ResponseWithSucces,
+  type ConnectionUUID,
+  type QueueCommands,
+  type ResponseWithSuccess,
   type StringError,
   type TextArray,
 } from "./db_store";
-import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
-import { findAndExecCommand, QUEUE_COMMANDS } from "./command_handler";
-import type { UUID } from "crypto";
-import { type CommandResult } from "./command_result";
 
-export let CONNECTION_INFO: Connection = {
-  uuid: "c896ca37-fe03-42a1-bd16-215169186004",
-  open: false,
-};
+export let CONNECTION_INFO: Connection[] = [
+  {
+    uuid: "c896ca37-fe03-42a1-bd16-215169186004",
+    open: false,
+  },
+];
 
 export function setKeyValue(textArray: string[]): boolean {
   const numberOfArgs = textArray.length;
@@ -227,49 +231,118 @@ export function incrementValue(textArray: TextArray): number | StringError {
 }
 
 export function openMultiConnection(connectionUUID: UUID): string {
-  CONNECTION_INFO = {
-    uuid: connectionUUID,
-    open: true,
-  };
+  const currentConnection = getOrMakeOpenCurrentConnection(connectionUUID);
+  if (!currentConnection.open) {
+    currentConnection.open = true;
+    const index = CONNECTION_INFO.findIndex(
+      (connection) => connection.uuid == connectionUUID,
+    );
+    CONNECTION_INFO[index] = currentConnection;
+  }
   return "OK";
 }
 
-export async function runQueuedCommands(): Promise<
-  StringError | CommandResult[]
-> {
-  if (CONNECTION_INFO.open == false) {
+export async function runQueuedCommands(
+  connectionUUID: UUID,
+  currentQueueCommands: QueueCommands[],
+): Promise<StringError | CommandResult[]> {
+  const currentConnection = getOrMakeOpenCurrentConnection(connectionUUID);
+  if (currentConnection.open == false) {
     return "ERR EXEC without MULTI";
   }
-  if (QUEUE_COMMANDS.length == 0) {
-    CONNECTION_INFO.open = false;
+  if (currentQueueCommands.length == 0) {
+    currentConnection.open = false;
     return [];
   }
 
   const responses: CommandResult[] = [];
-  while (QUEUE_COMMANDS.length) {
-    const fullCommand = QUEUE_COMMANDS.shift()!!;
+  while (currentQueueCommands.length) {
+    const fullCommand = currentQueueCommands.shift()!!;
     const response = await findAndExecCommand(
       fullCommand.command,
       fullCommand.textArray,
-      CONNECTION_INFO.uuid,
+      currentConnection.uuid,
+      currentQueueCommands,
     );
     responses.push(response);
   }
-  CONNECTION_INFO.open = false;
+  currentConnection.open = false;
+  const index = CONNECTION_INFO.findIndex(
+    (connection) => connection.uuid == connectionUUID,
+  );
+  CONNECTION_INFO[index] = currentConnection;
   return responses;
 }
 
-export function discardQueueCommands(): ResponseWithSucces {
-  if (CONNECTION_INFO.open == false) {
+export function discardQueueCommands(
+  connectionUUID: UUID,
+  currentQueueCommands: QueueCommands[],
+): ResponseWithSuccess {
+  const currentConnection = getOrMakeOpenCurrentConnection(connectionUUID);
+  if (currentConnection.open == false) {
     return {
       success: false,
       message: "ERR DISCARD without MULTI",
     };
   }
-  CONNECTION_INFO.open = false;
-  QUEUE_COMMANDS.length = 0;
+  currentConnection.open = false;
+  currentQueueCommands.length = 0;
   return {
     success: true,
     message: "OK",
   };
+}
+
+export function getOrMakeOpenCurrentConnection(
+  connectionUUID: UUID,
+): Connection {
+  let currentConnection: Connection = CONNECTION_INFO.filter(
+    (connection) => connection.uuid == connectionUUID,
+  )[0];
+
+  if (!currentConnection) {
+    CONNECTION_INFO.push({
+      uuid: connectionUUID,
+      open: true,
+    });
+    currentConnection = CONNECTION_INFO[CONNECTION_INFO.length - 1];
+  }
+  return currentConnection;
+}
+
+export function getOrMakeCloseCurrentConnection(
+  connectionUUID: UUID,
+): Connection {
+  let currentConnection: Connection = CONNECTION_INFO.filter(
+    (connection) => connection.uuid == connectionUUID,
+  )[0];
+
+  if (!currentConnection) {
+    CONNECTION_INFO.push({
+      uuid: connectionUUID,
+      open: false,
+    });
+    currentConnection = CONNECTION_INFO[CONNECTION_INFO.length - 1];
+  }
+  return currentConnection;
+}
+
+export function getCurrentConnectionCommandQueue(
+  connectionUUID: UUID,
+  command: string,
+  textArray: TextArray,
+): QueueCommands[] {
+  if (!QUEUE_COMMANDS[connectionUUID]) {
+    QUEUE_COMMANDS[connectionUUID] = [];
+  }
+
+  return QUEUE_COMMANDS[connectionUUID];
+}
+
+export function deleteConnectionInfo(connectionUUID: ConnectionUUID) {
+  QUEUE_COMMANDS[connectionUUID].length = 0;
+  CONNECTION_INFO = CONNECTION_INFO.filter(
+    (connection) => connection.uuid !== connectionUUID,
+  );
+  return;
 }

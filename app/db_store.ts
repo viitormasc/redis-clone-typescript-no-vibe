@@ -4,6 +4,11 @@ import type { UUID } from "crypto";
 type Key = string;
 export type RedisStreamFieldValues = Record<string, string>;
 export type TextArray = string[];
+export type ConnectionUUID = UUID;
+export type AllConnectionQueueCommands = Record<
+  ConnectionUUID,
+  QueueCommands[]
+>;
 export type QueueCommands = {
   command: string;
   textArray: TextArray;
@@ -13,7 +18,7 @@ export type Connection = {
   open: boolean;
 };
 export type StringError = string;
-export type ResponseWithSucces = {
+export type ResponseWithSuccess = {
   success: boolean;
   message: string;
 };
