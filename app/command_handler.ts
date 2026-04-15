@@ -18,12 +18,15 @@ import {
   CONNECTION_INFO,
   openMultiConnection,
   runQueuedCommands,
+  discardQueueCommands,
 } from "./value_db";
 import type { UUID } from "crypto";
 import type { QueueCommands, TextArray } from "./db_store";
 import { encodeCommandResult } from "./resp";
 
 export const QUEUE_COMMANDS: QueueCommands[] = [];
+
+const IGNORED_QUEUE_COMMANDS = ["exec", "discard"];
 
 export async function handleCommand(
   messageArray: string[],
@@ -34,7 +37,7 @@ export async function handleCommand(
   if (
     CONNECTION_INFO.open &&
     CONNECTION_INFO.uuid === connectionUUID &&
-    command !== "exec"
+    !IGNORED_QUEUE_COMMANDS.includes(command)
   ) {
     QUEUE_COMMANDS.push({
       command,
@@ -120,6 +123,17 @@ export async function findAndExecCommand(
         type: "stream_read",
         value: await getStreamRangeExclusive(textArray),
       };
+    case "discard":
+      const response = discardQueueCommands();
+      return response.success
+        ? {
+            type: "simple",
+            value: response.message,
+          }
+        : {
+            type: "error",
+            value: response.message,
+          };
     case "incr":
       const incrementedValue = incrementValue(textArray);
       return typeof incrementedValue == "number"

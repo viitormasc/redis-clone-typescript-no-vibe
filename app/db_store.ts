@@ -13,6 +13,10 @@ export type Connection = {
   open: boolean;
 };
 export type StringError = string;
+export type ResponseWithSucces = {
+  success: boolean;
+  message: string;
+};
 export type Id = string;
 export type StreamKeyIds = {
   streamKeys: StreamKey[];

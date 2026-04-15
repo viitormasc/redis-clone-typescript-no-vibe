@@ -6,6 +6,7 @@ import {
   setSimpleKeyValue,
   valuesDB,
   type Connection,
+  type ResponseWithSucces,
   type StringError,
   type TextArray,
 } from "./db_store";
@@ -233,7 +234,9 @@ export function openMultiConnection(connectionUUID: UUID): string {
   return "OK";
 }
 
-export async function runQueuedCommands(): Promise<StringError | CommandResult[]> {
+export async function runQueuedCommands(): Promise<
+  StringError | CommandResult[]
+> {
   if (CONNECTION_INFO.open == false) {
     return "ERR EXEC without MULTI";
   }
@@ -254,4 +257,19 @@ export async function runQueuedCommands(): Promise<StringError | CommandResult[]
   }
   CONNECTION_INFO.open = false;
   return responses;
+}
+
+export function discardQueueCommands(): ResponseWithSucces {
+  if (CONNECTION_INFO.open == false) {
+    return {
+      success: false,
+      message: "ERR DISCARD without MULTI",
+    };
+  }
+  CONNECTION_INFO.open = false;
+  QUEUE_COMMANDS.length = 0;
+  return {
+    success: true,
+    message: "OK",
+  };
 }
