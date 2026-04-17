@@ -1,21 +1,21 @@
 import { randomUUIDv7 } from "bun";
 import type { UUID } from "crypto";
 
-type Key = string;
-export type RedisStreamFieldValues = Record<string, string>;
+export type Key = string;
+export type RedisValue = string;
+export type RedisList = RedisValue[];
+export type RedisStreamFieldValues = Record<string, RedisValue>;
 export type TextArray = string[];
+export type CommandName = string;
 export type ConnectionUUID = UUID;
-export type AllConnectionQueueCommands = Record<
-  ConnectionUUID,
-  QueueCommands[]
->;
-export type QueueCommands = {
-  command: string;
+export type QueuedCommand = {
+  command: CommandName;
   textArray: TextArray;
 };
-export type Connection = {
+export type TransactionState = {
   uuid: UUID;
   open: boolean;
+  queue: QueuedCommand[];
 };
 export type StringError = string;
 export type ResponseWithSuccess = {
@@ -36,7 +36,7 @@ export interface RedisStreamEntry {
 
 export interface RedisValuesDBArguments {
   id: string;
-  value: string[];
+  value: RedisList;
   type?: string;
   timestampAdded: number;
   expiresInMs: number;

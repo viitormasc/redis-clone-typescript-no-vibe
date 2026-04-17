@@ -15,21 +15,20 @@ import {
   setKeyValue,
 } from "./db";
 import type {
-  AllConnectionQueueCommands,
-  QueueCommands,
+  CommandName,
+  ConnectionUUID,
+  QueuedCommand,
   TextArray,
 } from "./db_store";
 import { encodeCommandResult } from "./resp";
 import {
-  discardQueueCommands,
-  getCurrentConnectionCommandQueue,
-  getOrMakeCloseCurrentConnection,
-  incrementValue,
-  openMultiConnection,
-  runQueuedCommands,
-} from "./value_db";
-
-export const QUEUE_COMMANDS: AllConnectionQueueCommands = [];
+  discardTransaction,
+  isTransactionOpen,
+  openTransaction,
+  queueCommand,
+  takeQueuedCommands,
+} from "./transaction_store";
+import { incrementValue } from "./value_db";
 
 const IGNORED_QUEUE_COMMANDS = ["exec", "discard"];
 
@@ -39,20 +38,12 @@ export async function handleCommand(
 ): Promise<string> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
-  const currentConnection = getOrMakeCloseCurrentConnection(connectionUUID);
-
-  const currentQueueCommands = getCurrentConnectionCommandQueue(
-    connectionUUID,
-    command,
-    textArray,
-  );
 
   if (
-    currentConnection.open &&
-    currentConnection.uuid === connectionUUID &&
+    isTransactionOpen(connectionUUID) &&
     !IGNORED_QUEUE_COMMANDS.includes(command)
   ) {
-    currentQueueCommands.push({
+    queueCommand(connectionUUID, {
       command,
       textArray,
     });
@@ -62,21 +53,15 @@ export async function handleCommand(
       value: "QUEUED",
     });
   }
-  const result = await findAndExecCommand(
-    command,
-    textArray,
-    connectionUUID,
-    currentQueueCommands,
-  );
+  const result = await findAndExecCommand(command, textArray, connectionUUID);
 
   return encodeCommandResult(result);
 }
 
 export async function findAndExecCommand(
-  command: string,
+  command: CommandName,
   textArray: TextArray,
-  connectionUUID: UUID,
-  currentQueueCommands: QueueCommands[],
+  connectionUUID: ConnectionUUID,
 ): Promise<CommandResult> {
   switch (command) {
     case "echo":
@@ -144,10 +129,7 @@ export async function findAndExecCommand(
         value: await getStreamRangeExclusive(textArray),
       };
     case "discard":
-      const response = discardQueueCommands(
-        connectionUUID,
-        currentQueueCommands,
-      );
+      const response = discardTransaction(connectionUUID);
       return response.success
         ? {
             type: "simple",
@@ -171,23 +153,40 @@ export async function findAndExecCommand(
     case "multi":
       return {
         type: "simple",
-        value: openMultiConnection(connectionUUID),
+        value: openTransaction(connectionUUID),
       };
     case "exec":
-      const execResponse = await runQueuedCommands(
-        connectionUUID,
-        currentQueueCommands,
-      );
-      return typeof execResponse === "string"
-        ? {
-            type: "error",
-            value: execResponse,
-          }
-        : {
-            type: "exec",
-            value: execResponse,
-          };
+      const queuedCommands = takeQueuedCommands(connectionUUID);
+      if (typeof queuedCommands === "string") {
+        return {
+          type: "error",
+          value: queuedCommands,
+        };
+      }
+
+      return {
+        type: "exec",
+        value: await runQueuedCommands(connectionUUID, queuedCommands),
+      };
     default:
       return { type: "raw", value: "" };
   }
+}
+
+async function runQueuedCommands(
+  connectionUUID: ConnectionUUID,
+  queuedCommands: QueuedCommand[],
+): Promise<CommandResult[]> {
+  const responses: CommandResult[] = [];
+
+  for (const queuedCommand of queuedCommands) {
+    const response = await findAndExecCommand(
+      queuedCommand.command,
+      queuedCommand.textArray,
+      connectionUUID,
+    );
+    responses.push(response);
+  }
+
+  return responses;
 }

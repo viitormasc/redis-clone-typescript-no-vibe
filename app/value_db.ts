@@ -1,7 +1,4 @@
-import type { UUID } from "crypto";
-import { findAndExecCommand, QUEUE_COMMANDS } from "./command_handler";
 import { parseFloatArgument, parseIntegerArgument } from "./command_parsers";
-import { type CommandResult } from "./command_result";
 import {
   dbValueToArray,
   isKeyValueExpired,
@@ -9,22 +6,13 @@ import {
   setKeyValueWithPx,
   setSimpleKeyValue,
   valuesDB,
-  type Connection,
-  type ConnectionUUID,
-  type QueueCommands,
-  type ResponseWithSuccess,
+  type RedisList,
+  type RedisValue,
   type StringError,
   type TextArray,
 } from "./db_store";
 
-export let CONNECTION_INFO: Connection[] = [
-  {
-    uuid: "c896ca37-fe03-42a1-bd16-215169186004",
-    open: false,
-  },
-];
-
-export function setKeyValue(textArray: string[]): boolean {
+export function setKeyValue(textArray: TextArray): boolean {
   const numberOfArgs = textArray.length;
   const [key, value] = textArray;
   if (numberOfArgs == 2) {
@@ -45,7 +33,7 @@ export function setKeyValue(textArray: string[]): boolean {
   return true;
 }
 
-export function getKeyValue(textArray: string[]): string | null | string[] {
+export function getKeyValue(textArray: TextArray): RedisList | null {
   const key = textArray[0];
   const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   if (isKeyExpired) return null;
@@ -53,7 +41,7 @@ export function getKeyValue(textArray: string[]): string | null | string[] {
   return value;
 }
 
-export function addKeyListValue(textArray: string[]): number | null {
+export function addKeyListValue(textArray: TextArray): number | null {
   let [key, ...values] = textArray;
   if (!key || !values) {
     throw new Error("RPUSH command should have a key and a values");
@@ -74,7 +62,7 @@ export function addKeyListValue(textArray: string[]): number | null {
   return dbValue.length;
 }
 
-export function getKeyListRangeValues(textArray: string[]): string[] {
+export function getKeyListRangeValues(textArray: TextArray): RedisList {
   let key = textArray[0];
   let start = parseIntegerArgument(textArray[1]);
   let stop = parseIntegerArgument(textArray[2]);
@@ -82,7 +70,7 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   if (isKeyExpired) return [];
   const dbValue = valuesDB[key].value;
   const valuesLength = dbValue.length;
-  let listResponse: string[] | string;
+  let listResponse: RedisList | RedisValue;
   let conditional =
     !dbValue ||
     start >= valuesLength ||
@@ -110,7 +98,7 @@ export function getKeyListRangeValues(textArray: string[]): string[] {
   return listResponse;
 }
 
-export function pushListValues(textArray: string[]): number {
+export function pushListValues(textArray: TextArray): number {
   const key = textArray[0];
   const values = textArray.slice(1);
   if (!key || !values) return 0;
@@ -138,7 +126,9 @@ export function getListLength(textArray: string[]): number {
   return valuesDB[key].value.length;
 }
 
-export function removeArrayValues(textArray: string[]): string | string[] {
+export function removeArrayValues(
+  textArray: TextArray,
+): RedisValue | RedisList {
   const key = textArray[0];
   const isKeyExpired = !valuesDB[key] || isKeyValueExpired(key);
   const numberOfValues = parseIntegerArgument(textArray[1]);
@@ -221,128 +211,11 @@ export function incrementValue(textArray: TextArray): number | StringError {
   if (value.length > 1) {
     return "ERR value is not an integer or out of range";
   }
-  if (Number.isNaN(parseInt(value as string))) {
+  if (Number.isNaN(parseIntegerArgument(value[0]))) {
     return "ERR value is not an integer or out of range";
   }
 
-  let valueInteger = parseInt(value[0]) + 1;
+  let valueInteger = parseIntegerArgument(value[0]) + 1;
   setSimpleKeyValue(textArray[0], valueInteger.toString());
   return valueInteger;
-}
-
-export function openMultiConnection(connectionUUID: UUID): string {
-  const currentConnection = getOrMakeOpenCurrentConnection(connectionUUID);
-  if (!currentConnection.open) {
-    currentConnection.open = true;
-    const index = CONNECTION_INFO.findIndex(
-      (connection) => connection.uuid == connectionUUID,
-    );
-    CONNECTION_INFO[index] = currentConnection;
-  }
-  return "OK";
-}
-
-export async function runQueuedCommands(
-  connectionUUID: UUID,
-  currentQueueCommands: QueueCommands[],
-): Promise<StringError | CommandResult[]> {
-  const currentConnection = getOrMakeOpenCurrentConnection(connectionUUID);
-  if (currentConnection.open == false) {
-    return "ERR EXEC without MULTI";
-  }
-  if (currentQueueCommands.length == 0) {
-    currentConnection.open = false;
-    return [];
-  }
-
-  const responses: CommandResult[] = [];
-  while (currentQueueCommands.length) {
-    const fullCommand = currentQueueCommands.shift()!!;
-    const response = await findAndExecCommand(
-      fullCommand.command,
-      fullCommand.textArray,
-      currentConnection.uuid,
-      currentQueueCommands,
-    );
-    responses.push(response);
-  }
-  currentConnection.open = false;
-  const index = CONNECTION_INFO.findIndex(
-    (connection) => connection.uuid == connectionUUID,
-  );
-  CONNECTION_INFO[index] = currentConnection;
-  return responses;
-}
-
-export function discardQueueCommands(
-  connectionUUID: UUID,
-  currentQueueCommands: QueueCommands[],
-): ResponseWithSuccess {
-  const currentConnection = getOrMakeOpenCurrentConnection(connectionUUID);
-  if (currentConnection.open == false) {
-    return {
-      success: false,
-      message: "ERR DISCARD without MULTI",
-    };
-  }
-  currentConnection.open = false;
-  currentQueueCommands.length = 0;
-  return {
-    success: true,
-    message: "OK",
-  };
-}
-
-export function getOrMakeOpenCurrentConnection(
-  connectionUUID: UUID,
-): Connection {
-  let currentConnection: Connection = CONNECTION_INFO.filter(
-    (connection) => connection.uuid == connectionUUID,
-  )[0];
-
-  if (!currentConnection) {
-    CONNECTION_INFO.push({
-      uuid: connectionUUID,
-      open: true,
-    });
-    currentConnection = CONNECTION_INFO[CONNECTION_INFO.length - 1];
-  }
-  return currentConnection;
-}
-
-export function getOrMakeCloseCurrentConnection(
-  connectionUUID: UUID,
-): Connection {
-  let currentConnection: Connection = CONNECTION_INFO.filter(
-    (connection) => connection.uuid == connectionUUID,
-  )[0];
-
-  if (!currentConnection) {
-    CONNECTION_INFO.push({
-      uuid: connectionUUID,
-      open: false,
-    });
-    currentConnection = CONNECTION_INFO[CONNECTION_INFO.length - 1];
-  }
-  return currentConnection;
-}
-
-export function getCurrentConnectionCommandQueue(
-  connectionUUID: UUID,
-  command: string,
-  textArray: TextArray,
-): QueueCommands[] {
-  if (!QUEUE_COMMANDS[connectionUUID]) {
-    QUEUE_COMMANDS[connectionUUID] = [];
-  }
-
-  return QUEUE_COMMANDS[connectionUUID];
-}
-
-export function deleteConnectionInfo(connectionUUID: ConnectionUUID) {
-  QUEUE_COMMANDS[connectionUUID].length = 0;
-  CONNECTION_INFO = CONNECTION_INFO.filter(
-    (connection) => connection.uuid !== connectionUUID,
-  );
-  return;
 }
