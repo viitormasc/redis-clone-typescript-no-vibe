@@ -19,7 +19,6 @@ export async function restArrayToRestResponse(
   connectionUUID: UUID,
 ): Promise<string> {
   const { respArrayText, messageArray } = parseRespCommand(buffer);
-  console.log("respArrayText", respArrayText);
   console.log("messageArray", messageArray);
   const result = await handleCommand(messageArray, connectionUUID);
   return result;

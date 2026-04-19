@@ -16,6 +16,7 @@ export type TransactionState = {
   uuid: UUID;
   open: boolean;
   queue: QueuedCommand[];
+  role: "master" | "replica";
 };
 export type StringError = string;
 export type ResponseWithSuccess = {

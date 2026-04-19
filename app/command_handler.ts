@@ -23,6 +23,7 @@ import type {
 import { encodeCommandResult } from "./resp";
 import {
   discardTransaction,
+  getServerInfo,
   isTransactionOpen,
   openTransaction,
   queueCommand,
@@ -154,6 +155,11 @@ export async function findAndExecCommand(
       return {
         type: "simple",
         value: openTransaction(connectionUUID),
+      };
+    case "info":
+      return {
+        type: "bulk",
+        value: getServerInfo(connectionUUID),
       };
     case "exec":
       const queuedCommands = takeQueuedCommands(connectionUUID);

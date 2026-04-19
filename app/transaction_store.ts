@@ -17,6 +17,7 @@ function getOrCreateTransaction(
     uuid: connectionUUID,
     open: false,
     queue: [],
+    role: "master",
   };
   transactions[connectionUUID] = newTransaction;
   return newTransaction;
@@ -75,4 +76,10 @@ export function takeQueuedCommands(
 
 export function deleteTransaction(connectionUUID: ConnectionUUID): void {
   delete transactions[connectionUUID];
+}
+
+export function getServerInfo(connectionUUID: ConnectionUUID): string {
+  const server = getOrCreateTransaction(connectionUUID);
+  const role = server.role;
+  return `# Replication\n role:${role}`;
 }
