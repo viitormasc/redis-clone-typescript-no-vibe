@@ -12,11 +12,12 @@ export type QueuedCommand = {
   command: CommandName;
   textArray: TextArray;
 };
+export type ServerRole = "master" | "slave";
 export type TransactionState = {
   uuid: UUID;
   open: boolean;
   queue: QueuedCommand[];
-  role: "master" | "replica";
+  port: number;
 };
 export type StringError = string;
 export type ResponseWithSuccess = {

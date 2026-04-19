@@ -1,23 +1,26 @@
+import { randomUUID } from "crypto";
+import { PORT } from "./argument_hanlder";
 import type {
   ConnectionUUID,
   QueuedCommand,
   ResponseWithSuccess,
   TransactionState,
 } from "./db_store";
+import { SERVER_CONFIG } from "./server_config";
 
 const transactions: Partial<Record<ConnectionUUID, TransactionState>> = {};
 
-function getOrCreateTransaction(
-  connectionUUID: ConnectionUUID,
+export function getOrCreateTransaction(
+  connectionUUID?: ConnectionUUID,
 ): TransactionState {
+  if (!connectionUUID) connectionUUID = randomUUID();
   const transaction = transactions[connectionUUID];
   if (transaction) return transaction;
-
   const newTransaction: TransactionState = {
     uuid: connectionUUID,
     open: false,
     queue: [],
-    role: "master",
+    port: PORT,
   };
   transactions[connectionUUID] = newTransaction;
   return newTransaction;
@@ -78,8 +81,6 @@ export function deleteTransaction(connectionUUID: ConnectionUUID): void {
   delete transactions[connectionUUID];
 }
 
-export function getServerInfo(connectionUUID: ConnectionUUID): string {
-  const server = getOrCreateTransaction(connectionUUID);
-  const role = server.role;
-  return `# Replication\n role:${role}`;
+export function getServerInfo(): string {
+  return `# Replication\n role:${SERVER_CONFIG.role}`;
 }

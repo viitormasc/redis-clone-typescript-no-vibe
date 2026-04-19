@@ -159,7 +159,7 @@ export async function findAndExecCommand(
     case "info":
       return {
         type: "bulk",
-        value: getServerInfo(connectionUUID),
+        value: getServerInfo(),
       };
     case "exec":
       const queuedCommands = takeQueuedCommands(connectionUUID);
