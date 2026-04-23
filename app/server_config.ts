@@ -1,12 +1,12 @@
 import type { ServerRole } from "./db_store";
 export type ReplicationId = string;
-export type ServerInfo = {
+export interface ServerInfo {
   port: number;
   role: ServerRole;
-  masterPort?: number | undefined;
-  masterRepliId?: ReplicationId;
-  masterRepliOffSet?: number;
-};
+  masterPort: number | undefined;
+  masterRepliId: ReplicationId;
+  masterRepliOffSet: number;
+}
 export const SERVER_CONFIG: ServerInfo = {
   port: 6379,
   role: "master" as ServerRole,
@@ -15,4 +15,12 @@ export const SERVER_CONFIG: ServerInfo = {
   masterRepliOffSet: 0,
 };
 
-export const ALL_SERVERS: ServerInfo[] = [];
+export class ServerConfig implements ServerInfo {
+  constructor(
+    public readonly port: number,
+    public readonly role: ServerRole,
+    public readonly masterPort: number | undefined,
+    public readonly masterRepliId: string,
+    public readonly masterRepliOffSet: number,
+  ) {}
+}

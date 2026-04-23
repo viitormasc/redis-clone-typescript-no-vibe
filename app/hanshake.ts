@@ -61,14 +61,5 @@ export function handleReplConf(textArray: TextArray): string {
 }
 
 export function handlePsync(textArray: TextArray): string {
-  const masterIndex = ALL_SERVERS.findIndex(
-    (server) => (server.role = "master"),
-  );
-  if (!masterIndex) {
-    throw new Error("No master found");
-  }
-  const masterPort = ALL_SERVERS[masterIndex].port;
-  SERVER_CONFIG.masterPort = masterPort;
-  SERVER_CONFIG.masterRepliOffSet = -1;
-  return "";
+  return `FULLRESYNC ${SERVER_CONFIG.masterRepliId} 0`;
 }
