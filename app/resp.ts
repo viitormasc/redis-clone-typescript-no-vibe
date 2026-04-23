@@ -7,6 +7,7 @@ import {
   getNullBulkString,
   integerToResp,
   simpleError,
+  stringRdbToRespRdb,
   stringToBulkString,
   stringToSimpleResp,
   xRangeStreamArrayToRespArray,
@@ -22,6 +23,16 @@ export async function restArrayToRestResponse(
   console.log("messageArray", messageArray);
   const result = await handleCommand(messageArray, connectionUUID);
   return result;
+}
+
+export async function restArrayToRestResponses(
+  buffer: NonSharedBuffer | string,
+  connectionUUID: UUID,
+): Promise<string[]> {
+  const { messageArray } = parseRespCommand(buffer);
+  console.log("messageArray", messageArray);
+  const response = await handleCommand(messageArray, connectionUUID);
+  return Array.isArray(response) ? response : [response];
 }
 
 export function encodeCommandResult(result: CommandResult): string {
@@ -48,7 +59,19 @@ export function encodeCommandResult(result: CommandResult): string {
       return simpleError(result.value);
     case "raw":
       return result.value;
+    case "rdb":
+      return stringRdbToRespRdb(result.value);
+    case "multi_response":
+      return encodeMultiResponse(result.value).join("");
   }
+}
+
+export function encodeCommandResultChunks(result: CommandResult): string[] {
+  if (result.type === "multi_response") {
+    return encodeMultiResponse(result.value);
+  }
+
+  return [encodeCommandResult(result)];
 }
 
 function encodeExecResult(results: CommandResult[]): string {
@@ -59,4 +82,8 @@ function encodeExecResult(results: CommandResult[]): string {
   });
 
   return response;
+}
+
+function encodeMultiResponse(results: CommandResult[]): string[] {
+  return results.flatMap((result) => encodeCommandResultChunks(result));
 }

@@ -1,8 +1,11 @@
 import * as net from "net";
 import { commandToRespArray } from "./resp_encoder";
-import type { TextArray } from "./db_store";
+import type { ConnectionUUID, TextArray } from "./db_store";
 import { SERVER_CONFIG } from "./server_config";
-import { ALL_SERVERS } from "./argument_hanlder";
+import type { CommandResult } from "./command_result";
+
+const emptyRdbFile =
+  "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog==";
 
 async function sendCommandToMaster(
   socket: net.Socket,
@@ -60,6 +63,24 @@ export function handleReplConf(textArray: TextArray): string {
   return "OK";
 }
 
-export function handlePsync(textArray: TextArray): string {
-  return `FULLRESYNC ${SERVER_CONFIG.masterRepliId} 0`;
+export async function handlePsync(
+  textArray: TextArray,
+  connectionUUID: ConnectionUUID,
+): Promise<CommandResult> {
+  const buffer = Buffer.from(emptyRdbFile);
+  const rdbLength = buffer.length;
+
+  return {
+    type: "multi_response",
+    value: [
+      {
+        type: "simple",
+        value: `FULLRESYNC ${SERVER_CONFIG.masterRepliId} 0`,
+      },
+      {
+        type: "rdb",
+        value: { rdbLength: rdbLength, rdbContent: emptyRdbFile },
+      },
+    ],
+  };
 }

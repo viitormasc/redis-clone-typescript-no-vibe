@@ -1,3 +1,4 @@
+import type { RdbResponse } from "./command_result";
 import { type RedisStreamEntry } from "./db";
 import type { StreamReadData } from "./db_store";
 
@@ -105,4 +106,8 @@ export function commandToRespArray(parts: string[]): string {
     response += `$${part.length}\r\n${part}\r\n`;
   }
   return response;
+}
+
+export function stringRdbToRespRdb(value: RdbResponse): string {
+  return `$${value.rdbLength}\r\n${value.rdbContent}`;
 }

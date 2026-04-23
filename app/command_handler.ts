@@ -158,10 +158,7 @@ export async function findAndExecCommand(
         value: openTransaction(connectionUUID),
       };
     case "psync":
-      return {
-        type: "simple",
-        value: handlePsync(textArray),
-      };
+      return await handlePsync(textArray, connectionUUID);
     case "replconf":
       return {
         type: "simple",

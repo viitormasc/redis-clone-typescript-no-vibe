@@ -1,5 +1,5 @@
 import * as net from "net";
-import { restArrayToRestResponse } from "./resp";
+import { restArrayToRestResponses } from "./resp";
 import { randomUUID } from "crypto";
 import { deleteTransaction } from "./transaction_store";
 import { PORT, processAllArguments } from "./argument_hanlder";
@@ -13,8 +13,13 @@ const server: net.Server = net.createServer((connection: net.Socket) => {
   const connectionUUID = randomUUID();
 
   connection.on("data", async (command) => {
-    const respReponse = await restArrayToRestResponse(command, connectionUUID);
-    connection.write(respReponse);
+    const respResponses = await restArrayToRestResponses(
+      command,
+      connectionUUID,
+    );
+    respResponses.forEach((respResponse) => {
+      connection.write(respResponse);
+    });
   });
 
   connection.on("close", (hadError) => {
