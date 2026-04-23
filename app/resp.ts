@@ -1,4 +1,4 @@
-import { handleCommand } from "./command_handler";
+import { handleCommand, handleCommandResult } from "./command_handler";
 import { type CommandResult } from "./command_result";
 import { parseRespCommand } from "./resp_parser";
 import {
@@ -18,7 +18,7 @@ import type { UUID } from "crypto";
 export async function restArrayToRestResponse(
   buffer: NonSharedBuffer | string,
   connectionUUID: UUID,
-): Promise<string> {
+): Promise<string | Buffer> {
   const { respArrayText, messageArray } = parseRespCommand(buffer);
   console.log("messageArray", messageArray);
   const result = await handleCommand(messageArray, connectionUUID);
@@ -28,14 +28,14 @@ export async function restArrayToRestResponse(
 export async function restArrayToRestResponses(
   buffer: NonSharedBuffer | string,
   connectionUUID: UUID,
-): Promise<string[]> {
+): Promise<Array<string | Buffer>> {
   const { messageArray } = parseRespCommand(buffer);
   console.log("messageArray", messageArray);
-  const response = await handleCommand(messageArray, connectionUUID);
-  return Array.isArray(response) ? response : [response];
+  const result = await handleCommandResult(messageArray, connectionUUID);
+  return encodeCommandResultChunks(result);
 }
 
-export function encodeCommandResult(result: CommandResult): string {
+export function encodeCommandResult(result: CommandResult): string | Buffer {
   switch (result.type) {
     case "simple":
       return stringToSimpleResp(result.value);
@@ -62,11 +62,17 @@ export function encodeCommandResult(result: CommandResult): string {
     case "rdb":
       return stringRdbToRespRdb(result.value);
     case "multi_response":
-      return encodeMultiResponse(result.value).join("");
+      return Buffer.concat(
+        encodeMultiResponse(result.value).map((response) =>
+          typeof response === "string" ? Buffer.from(response) : response,
+        ),
+      );
   }
 }
 
-export function encodeCommandResultChunks(result: CommandResult): string[] {
+export function encodeCommandResultChunks(
+  result: CommandResult,
+): Array<string | Buffer> {
   if (result.type === "multi_response") {
     return encodeMultiResponse(result.value);
   }
@@ -78,12 +84,16 @@ function encodeExecResult(results: CommandResult[]): string {
   let response = `*${results.length}\r\n`;
 
   results.forEach((result) => {
-    response += encodeCommandResult(result);
+    const encodedResult = encodeCommandResult(result);
+    response +=
+      typeof encodedResult === "string"
+        ? encodedResult
+        : encodedResult.toString("binary");
   });
 
   return response;
 }
 
-function encodeMultiResponse(results: CommandResult[]): string[] {
+function encodeMultiResponse(results: CommandResult[]): Array<string | Buffer> {
   return results.flatMap((result) => encodeCommandResultChunks(result));
 }

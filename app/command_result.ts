@@ -3,7 +3,7 @@ import type { StreamReadData } from "./db_store";
 
 export type RdbResponse = {
   rdbLength: number;
-  rdbContent: string;
+  rdbContent: Buffer;
 };
 
 export type CommandResult =

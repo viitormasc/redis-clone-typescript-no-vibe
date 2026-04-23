@@ -67,7 +67,7 @@ export async function handlePsync(
   textArray: TextArray,
   connectionUUID: ConnectionUUID,
 ): Promise<CommandResult> {
-  const buffer = Buffer.from(emptyRdbFile);
+  const buffer = Buffer.from(emptyRdbFile, "base64");
   const rdbLength = buffer.length;
 
   return {
@@ -79,7 +79,7 @@ export async function handlePsync(
       },
       {
         type: "rdb",
-        value: { rdbLength: rdbLength, rdbContent: emptyRdbFile },
+        value: { rdbLength: rdbLength, rdbContent: buffer },
       },
     ],
   };

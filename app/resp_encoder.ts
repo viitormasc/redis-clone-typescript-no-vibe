@@ -108,6 +108,7 @@ export function commandToRespArray(parts: string[]): string {
   return response;
 }
 
-export function stringRdbToRespRdb(value: RdbResponse): string {
-  return `$${value.rdbLength}\r\n${value.rdbContent}`;
+export function stringRdbToRespRdb(value: RdbResponse): Buffer {
+  const header = Buffer.from(`$${value.rdbLength}\r\n`);
+  return Buffer.concat([header, value.rdbContent]);
 }

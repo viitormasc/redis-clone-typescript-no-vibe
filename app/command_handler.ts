@@ -37,7 +37,15 @@ const IGNORED_QUEUE_COMMANDS = ["exec", "discard"];
 export async function handleCommand(
   messageArray: string[],
   connectionUUID: UUID,
-): Promise<string> {
+): Promise<string | Buffer> {
+  const result = await handleCommandResult(messageArray, connectionUUID);
+  return encodeCommandResult(result);
+}
+
+export async function handleCommandResult(
+  messageArray: string[],
+  connectionUUID: UUID,
+): Promise<CommandResult> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
 
@@ -50,14 +58,12 @@ export async function handleCommand(
       textArray,
     });
 
-    return encodeCommandResult({
+    return {
       type: "simple",
       value: "QUEUED",
-    });
+    };
   }
-  const result = await findAndExecCommand(command, textArray, connectionUUID);
-
-  return encodeCommandResult(result);
+  return await findAndExecCommand(command, textArray, connectionUUID);
 }
 
 export async function findAndExecCommand(
