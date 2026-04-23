@@ -5,24 +5,24 @@ export type Argument = "--port" | "--replicaof";
 
 export let PORT: number = 6379;
 
-export function processAllArguments() {
+export async function processAllArguments() {
   const args = process.argv;
   for (let arg of args) {
     const sufix = arg.substring(0, 2);
     if (sufix == "--") {
       const parameterIndex = args.indexOf(arg) + 1;
       const parameter = args[parameterIndex];
-      processCommand(arg as Argument, parameter);
+      await processCommand(arg as Argument, parameter);
     }
   }
 }
 
-function processCommand(argument: Argument, parameter: string): void {
+async function processCommand(argument: Argument, parameter: string): void {
   switch (argument) {
     case "--port":
       return proccessPort(parameter);
     case "--replicaof":
-      return processReplica(parameter);
+      return await processReplica(parameter);
     default:
       break;
   }

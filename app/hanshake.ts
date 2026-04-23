@@ -1,59 +1,54 @@
 import * as net from "net";
 import { commandToRespArray } from "./resp_encoder";
 import type { TextArray } from "./db_store";
+import { SERVER_CONFIG } from "./server_config";
 
 async function sendCommandToMaster(
-  host: string,
-  port: number,
+  socket: net.Socket,
   command: string[],
 ): Promise<string> {
-  return await new Promise<string>((resolve, reject) => {
-    const socket = net.createConnection({ host, port }, () => {
-      socket.write(commandToRespArray(command));
-      console.log(
-        "socket.write(commandToRespArray(command));",
-        commandToRespArray(command),
-      );
-    });
-
+  const response = await new Promise<string>((resolve, reject) => {
+    socket.write(commandToRespArray(command));
     socket.once("data", (data) => {
       console.log("data", data.toString());
       resolve(data.toString("utf8"));
-      socket.end();
     });
-
     socket.once("error", reject);
   });
+  return response;
 }
 
 export async function handShake(masterHost: string, masterPort: number) {
-  const pingResponse = await sendCommandToMaster(masterHost, masterPort, [
-    "PING",
-  ]);
+  const masterSocket: net.Socket = net.createConnection({
+    host: masterHost,
+    port: masterPort,
+  });
+  const pingResponse = await sendCommandToMaster(masterSocket, ["PING"]);
+
   if (pingResponse !== "+PONG\r\n") {
+    masterSocket.end();
     throw new Error(`Unexpected master response: ${pingResponse}`);
   }
   const firstReplConf = await sendCommandToMaster(
-    masterHost,
-    masterPort,
-    "REPLCONF listening-port 6969".split(" "),
+    masterSocket,
+    `REPLCONF listening-port ${SERVER_CONFIG.port}`.split(" "),
   );
   if (firstReplConf !== "+OK\r\n") {
+    masterSocket.end();
     throw new Error(`Unexpected master response: ${pingResponse}`);
   }
   const secondReplConf = await sendCommandToMaster(
-    masterHost,
-    masterPort,
+    masterSocket,
     "REPLCONF capa psync2".split(" "),
   );
   if (secondReplConf !== "+OK\r\n") {
+    masterSocket.end();
     throw new Error(`Unexpected master response: ${pingResponse}`);
   }
-
+  masterSocket.end();
   return;
 }
 
 export function handleReplConf(textArray: TextArray): string {
-  console.log("running replconft");
   return "OK";
 }
