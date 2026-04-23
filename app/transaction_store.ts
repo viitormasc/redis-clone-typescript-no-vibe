@@ -82,5 +82,11 @@ export function deleteTransaction(connectionUUID: ConnectionUUID): void {
 }
 
 export function getServerInfo(): string {
-  return `# Replication\n role:${SERVER_CONFIG.role}`;
+  const replication = "# Replication\n";
+  const role = `role:${SERVER_CONFIG.role}\n`;
+  const masterRepliId = `master_replid:${SERVER_CONFIG.masterRepliId}\n`;
+  const masterServerOffSet = `master_repl_offset:${SERVER_CONFIG.masterRepliOffSet}\n`;
+
+  const fullInfo = [replication, role, masterRepliId, masterServerOffSet];
+  return fullInfo.reduce((response, acc) => (acc += response));
 }
