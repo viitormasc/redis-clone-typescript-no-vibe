@@ -30,6 +30,7 @@ import {
   takeQueuedCommands,
 } from "./transaction_store";
 import { incrementValue } from "./value_db";
+import { handleReplConf } from "./hanshake";
 
 const IGNORED_QUEUE_COMMANDS = ["exec", "discard"];
 
@@ -155,6 +156,11 @@ export async function findAndExecCommand(
       return {
         type: "simple",
         value: openTransaction(connectionUUID),
+      };
+    case "replconf":
+      return {
+        type: "simple",
+        value: handleReplConf(textArray),
       };
     case "info":
       return {
