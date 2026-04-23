@@ -2,6 +2,7 @@ import * as net from "net";
 import { commandToRespArray } from "./resp_encoder";
 import type { TextArray } from "./db_store";
 import { SERVER_CONFIG } from "./server_config";
+import { ALL_SERVERS } from "./argument_hanlder";
 
 async function sendCommandToMaster(
   socket: net.Socket,
@@ -45,10 +46,29 @@ export async function handShake(masterHost: string, masterPort: number) {
     masterSocket.end();
     throw new Error(`Unexpected master response: ${pingResponse}`);
   }
+
+  const psyncResponse = await sendCommandToMaster(
+    masterSocket,
+    "PSYNC ? -1".split(" "),
+  );
+
   masterSocket.end();
   return;
 }
 
 export function handleReplConf(textArray: TextArray): string {
   return "OK";
+}
+
+export function handlePsync(textArray: TextArray): string {
+  const masterIndex = ALL_SERVERS.findIndex(
+    (server) => (server.role = "master"),
+  );
+  if (!masterIndex) {
+    throw new Error("No master found");
+  }
+  const masterPort = ALL_SERVERS[masterIndex].port;
+  SERVER_CONFIG.masterPort = masterPort;
+  SERVER_CONFIG.masterRepliOffSet = -1;
+  return "";
 }

@@ -1,18 +1,21 @@
 import { handShake } from "./hanshake";
-import { SERVER_CONFIG } from "./server_config";
+import { SERVER_CONFIG, type ServerInfo } from "./server_config";
 
 export type Argument = "--port" | "--replicaof";
 
 export let PORT: number = 6379;
 
+export const ALL_SERVERS: ServerInfo[] = [];
+
 export async function processAllArguments() {
+  ALL_SERVERS.push(SERVER_CONFIG);
   const args = process.argv;
   for (let arg of args) {
     const sufix = arg.substring(0, 2);
     if (sufix == "--") {
       const parameterIndex = args.indexOf(arg) + 1;
       const parameter = args[parameterIndex];
-      await processCommand(arg as Argument, parameter);
+      processCommand(arg as Argument, parameter);
     }
   }
 }
