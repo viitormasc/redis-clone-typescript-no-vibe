@@ -1,5 +1,7 @@
+import * as net from "net";
+
 import { SERVER_CONFIG } from "./server_config";
-import { getOrCreateTransaction } from "./transaction_store";
+import { commandToRespArray } from "./resp_encoder";
 
 export type Argument = "--port" | "--replicaof";
 
@@ -36,10 +38,46 @@ function proccessPort(customPort: string): void {
   return;
 }
 
-function processReplica(masterServer: string): void {
-  masterServer = masterServer.slice(1, masterServer.length);
+async function sendCommandToMaster(
+  host: string,
+  port: number,
+  command: string[],
+): Promise<string> {
+  return await new Promise<string>((resolve, reject) => {
+    const socket = net.createConnection({ host, port }, () => {
+      socket.write(commandToRespArray(command));
+    });
+
+    socket.once("data", (data) => {
+      console.log("data", data.toString());
+      resolve(data.toString("utf8"));
+      socket.end();
+    });
+
+    socket.once("error", reject);
+  });
+}
+
+async function handShake(masterHost: string, masterPort: number) {
+  const response = await sendCommandToMaster(masterHost, masterPort, ["PING"]);
+  if (response !== "+PONG\r\n") {
+    throw new Error(`Unexpected master response: ${response}`);
+  }
+  return;
+}
+
+async function processReplica(masterServer: string): Promise<void> {
+  masterServer = masterServer.slice(0, masterServer.length);
   const masterPort = +masterServer.split(" ")[1];
-  SERVER_CONFIG.port = masterPort;
+  console.log("masterPort", masterPort);
+  const masterHost = masterServer.split(" ")[0];
+  console.log("masterHost", masterHost);
+  SERVER_CONFIG.masterPort = masterPort;
   SERVER_CONFIG.role = "slave";
+  try {
+    await handShake(masterHost, masterPort);
+  } catch (error) {
+    throw new Error("Replica handshake could not succeed");
+  }
   return;
 }

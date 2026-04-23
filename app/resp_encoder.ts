@@ -98,3 +98,11 @@ export function xReadStreamArrayToRespArray(
 
   return response;
 }
+
+export function commandToRespArray(parts: string[]): string {
+  let response = `*${parts.length}\r\n`;
+  for (const part of parts) {
+    response += `$${part.length}\r\n${part}\r\n`;
+  }
+  return response;
+}
