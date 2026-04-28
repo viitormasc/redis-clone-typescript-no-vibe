@@ -1,6 +1,7 @@
-import { handleCommand, handleCommandResult } from "./command_handler";
+import type { UUID } from "crypto";
+import * as net from "net";
+import { processCommand } from "./command_handler";
 import { type CommandResult } from "./command_result";
-import { parseRespCommand } from "./resp_parser";
 import {
   arrayToRespArray,
   getNullArray,
@@ -13,25 +14,16 @@ import {
   xRangeStreamArrayToRespArray,
   xReadStreamArrayToRespArray,
 } from "./resp_encoder";
-import type { UUID } from "crypto";
+import { parseRespCommand } from "./resp_parser";
 
-export async function restArrayToRestResponse(
+export async function processSocketCommand(
   buffer: NonSharedBuffer | string,
   connectionUUID: UUID,
-): Promise<string | Buffer> {
-  const { respArrayText, messageArray } = parseRespCommand(buffer);
-  console.log("messageArray", messageArray);
-  const result = await handleCommand(messageArray, connectionUUID);
-  return result;
-}
-
-export async function restArrayToRestResponses(
-  buffer: NonSharedBuffer | string,
-  connectionUUID: UUID,
+  connection: net.Socket,
 ): Promise<Array<string | Buffer>> {
   const { messageArray } = parseRespCommand(buffer);
   console.log("messageArray", messageArray);
-  const result = await handleCommandResult(messageArray, connectionUUID);
+  const result = await processCommand(messageArray, connectionUUID, connection);
   return encodeCommandResultChunks(result);
 }
 

@@ -1,8 +1,9 @@
 import * as net from "net";
 import { commandToRespArray } from "./resp_encoder";
-import type { ConnectionUUID, TextArray } from "./db_store";
 import { SERVER_CONFIG } from "./server_config";
 import type { CommandResult } from "./command_result";
+import type { UUID } from "crypto";
+import type { TextArray } from "./db_store";
 
 const emptyRdbFile =
   "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog==";
@@ -49,24 +50,18 @@ export async function handShake(masterHost: string, masterPort: number) {
     masterSocket.end();
     throw new Error(`Unexpected master response: ${pingResponse}`);
   }
-
-  const psyncResponse = await sendCommandToMaster(
-    masterSocket,
-    "PSYNC ? -1".split(" "),
-  );
-
-  masterSocket.end();
+  await sendCommandToMaster(masterSocket, "PSYNC ? -1".split(" "));
   return;
 }
 
-export function handleReplConf(textArray: TextArray): string {
+export function handleReplConf(
+  connectionUUID: UUID,
+  textArray: TextArray,
+): string {
   return "OK";
 }
 
-export async function handlePsync(
-  textArray: TextArray,
-  connectionUUID: ConnectionUUID,
-): Promise<CommandResult> {
+export async function handlePsync(): Promise<CommandResult> {
   const buffer = Buffer.from(emptyRdbFile, "base64");
   const rdbLength = buffer.length;
 

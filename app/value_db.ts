@@ -14,6 +14,10 @@ import {
 
 export function setKeyValue(textArray: TextArray): boolean {
   const numberOfArgs = textArray.length;
+  if (numberOfArgs < 2) {
+    console.log("You need to arguments");
+    return false;
+  }
   const [key, value] = textArray;
   if (numberOfArgs == 2) {
     setSimpleKeyValue(key, value);

@@ -1,5 +1,5 @@
 import { handShake } from "./hanshake";
-import { SERVER_CONFIG, ServerConfig, type ServerInfo } from "./server_config";
+import { SERVER_CONFIG } from "./server_config";
 
 export type Argument = "--port" | "--replicaof";
 

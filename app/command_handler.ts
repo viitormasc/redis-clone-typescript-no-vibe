@@ -1,4 +1,5 @@
 import type { UUID } from "crypto";
+import * as net from "net";
 import { type CommandResult } from "./command_result";
 import {
   addKeyListValue,
@@ -20,7 +21,10 @@ import type {
   QueuedCommand,
   TextArray,
 } from "./db_store";
+import { handlePsync, handleReplConf } from "./hanshake";
+import { checkIfHandshakeIsComplete, replicateCommand } from "./replication";
 import { encodeCommandResult } from "./resp";
+import { SERVER_CONFIG } from "./server_config";
 import {
   discardTransaction,
   getServerInfo,
@@ -30,7 +34,6 @@ import {
   takeQueuedCommands,
 } from "./transaction_store";
 import { incrementValue } from "./value_db";
-import { handlePsync, handleReplConf } from "./hanshake";
 
 const IGNORED_QUEUE_COMMANDS = ["exec", "discard"];
 
@@ -38,16 +41,21 @@ export async function handleCommand(
   messageArray: string[],
   connectionUUID: UUID,
 ): Promise<string | Buffer> {
-  const result = await handleCommandResult(messageArray, connectionUUID);
+  const result = await processCommand(messageArray, connectionUUID);
   return encodeCommandResult(result);
 }
 
-export async function handleCommandResult(
+export async function processCommand(
   messageArray: string[],
   connectionUUID: UUID,
+  connection?: net.Socket,
 ): Promise<CommandResult> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
+
+  if (SERVER_CONFIG.role == "master" && connection) {
+    checkIfHandshakeIsComplete(connection, messageArray);
+  }
 
   if (
     isTransactionOpen(connectionUUID) &&
@@ -63,7 +71,9 @@ export async function handleCommandResult(
       value: "QUEUED",
     };
   }
-  return await findAndExecCommand(command, textArray, connectionUUID);
+  replicateCommand(messageArray);
+  const response = await findAndExecCommand(command, textArray, connectionUUID);
+  return response;
 }
 
 export async function findAndExecCommand(
@@ -79,7 +89,10 @@ export async function findAndExecCommand(
     case "set":
       const valueWasSet = setKeyValue(textArray);
       if (!valueWasSet) {
-        throw new Error("Value was not set");
+        return {
+          type: "error",
+          value: "ERR You need at least 2 arguments to set a key",
+        };
       }
       return { type: "simple", value: "OK" };
     case "get":
@@ -164,11 +177,11 @@ export async function findAndExecCommand(
         value: openTransaction(connectionUUID),
       };
     case "psync":
-      return await handlePsync(textArray, connectionUUID);
+      return await handlePsync();
     case "replconf":
       return {
         type: "simple",
-        value: handleReplConf(textArray),
+        value: handleReplConf(connectionUUID, textArray),
       };
     case "info":
       return {
