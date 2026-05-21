@@ -27,39 +27,66 @@ export async function processSocketCommand(
   return encodeCommandResultChunks(result);
 }
 
+const encodeFunctions = {
+  simple: stringToSimpleResp,
+  bulk: stringToBulkString,
+  bulk_null: getNullBulkString,
+  integer: integerToResp,
+  array: arrayToRespArray,
+  array_null: getNullArray,
+  exec: encodeExecResult,
+  stream_range: xRangeStreamArrayToRespArray,
+  stream_read: xReadStreamArrayToRespArray,
+  error: simpleError,
+  raw: (value) => value,
+  rdb: stringRdbToRespRdb,
+  multi_response: (value) =>
+    Buffer.concat(
+      encodeMultiResponse(value).map((response) =>
+        typeof response === "string" ? Buffer.from(response) : response,
+      ),
+    ),
+};
 export function encodeCommandResult(result: CommandResult): string | Buffer {
-  switch (result.type) {
-    case "simple":
-      return stringToSimpleResp(result.value);
-    case "bulk":
-      return stringToBulkString(result.value);
-    case "bulk_null":
-      return getNullBulkString();
-    case "integer":
-      return integerToResp(result.value);
-    case "array":
-      return arrayToRespArray(result.value);
-    case "array_null":
-      return getNullArray();
-    case "exec":
-      return encodeExecResult(result.value);
-    case "stream_range":
-      return xRangeStreamArrayToRespArray(result.value);
-    case "stream_read":
-      return xReadStreamArrayToRespArray(result.value);
-    case "error":
-      return simpleError(result.value);
-    case "raw":
-      return result.value;
-    case "rdb":
-      return stringRdbToRespRdb(result.value);
-    case "multi_response":
-      return Buffer.concat(
-        encodeMultiResponse(result.value).map((response) =>
-          typeof response === "string" ? Buffer.from(response) : response,
-        ),
-      );
+  const func = encodeFunctions[result.type];
+  if (!func) {
+    throw new Error(`Unknown type: ${result.type}`);
   }
+
+  return func(result.value);
+
+  // switch (result.type) {
+  //   case "simple":
+  //     return stringToSimpleResp(result.value);
+  //   case "bulk":
+  //     return stringToBulkString(result.value);
+  //   case "bulk_null":
+  //     return getNullBulkString();
+  //   case "integer":
+  //     return integerToResp(result.value);
+  //   case "array":
+  //     return arrayToRespArray(result.value);
+  //   case "array_null":
+  //     return getNullArray();
+  //   case "exec":
+  //     return encodeExecResult(result.value);
+  //   case "stream_range":
+  //     return xRangeStreamArrayToRespArray(result.value);
+  //   case "stream_read":
+  //     return xReadStreamArrayToRespArray(result.value);
+  //   case "error":
+  //     return simpleError(result.value);
+  //   case "raw":
+  //     return result.value;
+  //   case "rdb":
+  //     return stringRdbToRespRdb(result.value);
+  //   case "multi_response":
+  //     return Buffer.concat(
+  //       encodeMultiResponse(result.value).map((response) =>
+  //         typeof response === "string" ? Buffer.from(response) : response,
+  //       ),
+  //     );
+  // }
 }
 
 export function encodeCommandResultChunks(

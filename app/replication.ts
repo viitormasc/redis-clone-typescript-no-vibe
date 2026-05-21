@@ -44,7 +44,9 @@ export function replicateCommand(messageArray: string[]) {
   ) {
     return;
   }
+  messageArray.push("no-response");
   const respMessage = arrayToRespArray(messageArray);
+  console.log("respMessage", respMessage);
   for (let socket of SERVER_CONFIG.replicas) {
     console.log("Writing on socket", socket.remotePort);
     socket.write(respMessage);

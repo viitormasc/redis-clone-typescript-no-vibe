@@ -52,7 +52,9 @@ export async function processCommand(
 ): Promise<CommandResult> {
   const command = messageArray[0].toLowerCase();
   const textArray = messageArray.slice(1);
-
+  if (messageArray.includes("no-response")) {
+    console.log("no-response");
+  }
   if (SERVER_CONFIG.role == "master" && connection) {
     checkIfHandshakeIsComplete(connection, messageArray);
   }
